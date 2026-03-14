@@ -1,0 +1,6 @@
+/oracle-watchdog
+/bin/
+/dist/
+*.test
+*.deb
+packaging/changelog.gz
