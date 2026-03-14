@@ -16,12 +16,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/afreidah/oracle-watchdog/internal/tracing"
+
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/afreidah/oracle-watchdog/internal/tracing"
 )
 
 const (
@@ -183,7 +183,15 @@ func (c *Client) waitForState(ctx context.Context, instanceID string, targetStat
 			"target", targetState,
 		)
 
-		time.Sleep(pollInterval)
+		pollTimer := time.NewTimer(pollInterval)
+		select {
+		case <-pollTimer.C:
+		case <-ctx.Done():
+			pollTimer.Stop()
+			span.RecordError(ctx.Err())
+			span.SetStatus(codes.Error, "context cancelled")
+			return ctx.Err()
+		}
 	}
 
 	err := fmt.Errorf("timeout waiting for state %s after %d polls", targetState, pollCount)

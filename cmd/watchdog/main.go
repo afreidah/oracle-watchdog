@@ -95,11 +95,7 @@ func runMonitor(ctx context.Context, nodeName string) {
 
 	slog.Info("starting monitor mode", "node", nodeName)
 
-	m, err := monitor.New(nodeName)
-	if err != nil {
-		slog.Error("failed to create monitor", "error", err)
-		os.Exit(1)
-	}
+	m := monitor.New(nodeName)
 
 	if err := m.Run(ctx); err != nil {
 		slog.Error("monitor error", "error", err)
@@ -118,11 +114,7 @@ func runAgent(ctx context.Context, configPath string, dryRun bool) {
 
 	slog.Info("starting agent mode", "nodes", len(cfg.Nodes), "timeout", cfg.Timeout, "dry_run", dryRun)
 
-	a, err := agent.New(cfg)
-	if err != nil {
-		slog.Error("failed to create agent", "error", err)
-		os.Exit(1)
-	}
+	a := agent.New(cfg)
 
 	if err := a.Run(ctx); err != nil {
 		slog.Error("agent error", "error", err)
