@@ -9,6 +9,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -131,7 +132,7 @@ nodes:
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
-			if !contains(err.Error(), tt.wantErr) {
+			if !strings.Contains(err.Error(), tt.wantErr) {
 				t.Errorf("expected error containing %q, got %q", tt.wantErr, err.Error())
 			}
 		})
@@ -172,18 +173,4 @@ func writeAndLoad(t *testing.T, content string) *Config {
 		t.Fatalf("failed to load config: %v", err)
 	}
 	return cfg
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > 0 && len(substr) > 0 && searchString(s, substr)))
-}
-
-func searchString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

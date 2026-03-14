@@ -7,7 +7,6 @@
 package monitor
 
 import (
-	"os"
 	"testing"
 )
 
@@ -33,10 +32,7 @@ func TestState_String(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	monitor, err := New("test-node")
-	if err != nil {
-		t.Fatalf("New() error = %v", err)
-	}
+	monitor := New("test-node")
 
 	if monitor.nodeName != "test-node" {
 		t.Errorf("expected nodeName = test-node, got %s", monitor.nodeName)
@@ -47,16 +43,9 @@ func TestNew(t *testing.T) {
 }
 
 func TestNew_UsesEnvVar(t *testing.T) {
-	// Set custom consul address
-	originalAddr := os.Getenv("CONSUL_HTTP_ADDR")
-	defer os.Setenv("CONSUL_HTTP_ADDR", originalAddr)
+	t.Setenv("CONSUL_HTTP_ADDR", "custom-consul:8500")
 
-	os.Setenv("CONSUL_HTTP_ADDR", "custom-consul:8500")
-
-	monitor, err := New("test-node")
-	if err != nil {
-		t.Fatalf("New() error = %v", err)
-	}
+	monitor := New("test-node")
 
 	if monitor.consulAddress != "custom-consul:8500" {
 		t.Errorf("expected consulAddress = custom-consul:8500, got %s", monitor.consulAddress)
@@ -64,16 +53,9 @@ func TestNew_UsesEnvVar(t *testing.T) {
 }
 
 func TestNew_DefaultConsulAddress(t *testing.T) {
-	// Ensure env var is not set
-	originalAddr := os.Getenv("CONSUL_HTTP_ADDR")
-	defer os.Setenv("CONSUL_HTTP_ADDR", originalAddr)
+	t.Setenv("CONSUL_HTTP_ADDR", "")
 
-	os.Unsetenv("CONSUL_HTTP_ADDR")
-
-	monitor, err := New("test-node")
-	if err != nil {
-		t.Fatalf("New() error = %v", err)
-	}
+	monitor := New("test-node")
 
 	if monitor.consulAddress != "consul.service.consul:8500" {
 		t.Errorf("expected default consulAddress, got %s", monitor.consulAddress)

@@ -30,6 +30,10 @@ const (
 	defaultOTLPURL = "http://tempo.service.consul:4318"
 )
 
+// Version of the service for trace metadata. Set at build time via
+// -ldflags "-X github.com/afreidah/oracle-watchdog/internal/tracing.Version=..."
+var Version = "dev"
+
 var tracer trace.Tracer
 
 // Init initializes the OpenTelemetry tracer with OTLP HTTP exporter.
@@ -54,7 +58,7 @@ func Init(ctx context.Context, mode string) (func(context.Context) error, error)
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceName(serviceName),
-			semconv.ServiceVersion("1.0.0"),
+			semconv.ServiceVersion(Version),
 			attribute.String("mode", mode),
 		),
 	)

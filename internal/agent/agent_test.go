@@ -51,9 +51,9 @@ func TestIsConnectionError(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "eof uppercase in error",
+			name: "eof in error",
 			err:  errors.New("unexpected EOF"),
-			want: false, // Note: pattern is uppercase "EOF" but error is lowercased, so no match
+			want: true,
 		},
 		{
 			name: "network unreachable",
@@ -137,10 +137,7 @@ func TestNew(t *testing.T) {
 		},
 	}
 
-	agent, err := New(cfg)
-	if err != nil {
-		t.Fatalf("New() error = %v", err)
-	}
+	agent := New(cfg)
 
 	if agent.cfg != cfg {
 		t.Error("agent.cfg not set correctly")

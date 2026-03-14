@@ -73,9 +73,9 @@ type Monitor struct {
 	state     state
 }
 
-// New creates a Monitor for the given node name. Always succeeds - connection
-// to Consul happens asynchronously in Run().
-func New(nodeName string) (*Monitor, error) {
+// New creates a Monitor for the given node name. Connection to Consul happens
+// asynchronously in Run().
+func New(nodeName string) *Monitor {
 	consulAddr := "consul.service.consul:8500"
 	if addr := os.Getenv("CONSUL_HTTP_ADDR"); addr != "" {
 		consulAddr = addr
@@ -85,7 +85,7 @@ func New(nodeName string) (*Monitor, error) {
 		nodeName:      nodeName,
 		consulAddress: consulAddr,
 		state:         stateDisconnected,
-	}, nil
+	}
 }
 
 // Run starts the monitor loop. Never returns an error due to Consul issues -

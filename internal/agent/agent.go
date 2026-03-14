@@ -21,13 +21,13 @@ import (
 	"sync"
 	"time"
 
-	consul "github.com/hashicorp/consul/api"
-	"go.opentelemetry.io/otel/codes"
-
 	"github.com/afreidah/oracle-watchdog/internal/config"
 	"github.com/afreidah/oracle-watchdog/internal/metrics"
 	"github.com/afreidah/oracle-watchdog/internal/oci"
 	"github.com/afreidah/oracle-watchdog/internal/tracing"
+
+	consul "github.com/hashicorp/consul/api"
+	"go.opentelemetry.io/otel/codes"
 )
 
 const (
@@ -81,14 +81,17 @@ type Agent struct {
 	// Tracks consecutive restart attempts per node (resets on recovery)
 	restartAttempts map[string]int
 
+	// Waits for in-flight restart goroutines during shutdown
+	restartWg sync.WaitGroup
+
 	// Consecutive failure tracking for connection health
 	consulFailures int
 	ociFailures    int
 }
 
-// New creates an Agent with the given configuration. Always succeeds -
-// connections to Consul and OCI happen asynchronously in Run().
-func New(cfg *config.Config) (*Agent, error) {
+// New creates an Agent with the given configuration. Connections to Consul
+// and OCI happen asynchronously in Run().
+func New(cfg *config.Config) *Agent {
 	metrics.AgentNodesMonitored.Set(float64(len(cfg.Nodes)))
 
 	return &Agent{
@@ -98,7 +101,7 @@ func New(cfg *config.Config) (*Agent, error) {
 		missingSince:    make(map[string]time.Time),
 		restarting:      make(map[string]bool),
 		restartAttempts: make(map[string]int),
-	}, nil
+	}
 }
 
 // Run starts the monitoring loop. Never returns an error due to connection
@@ -118,6 +121,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			a.restartWg.Wait()
 			return nil
 		case <-ticker.C:
 			a.tick(ctx)
@@ -281,17 +285,6 @@ func (a *Agent) checkNodes(ctx context.Context) {
 				missingDuration := now.Sub(firstMissing)
 
 				if missingDuration >= a.cfg.Timeout {
-					// Check again under lock for max attempts
-					if a.cfg.MaxRestartAttempts > 0 && a.restartAttempts[node.Name] >= a.cfg.MaxRestartAttempts {
-						slog.Error("node exceeded max restart attempts, giving up",
-							"node", node.Name,
-							"attempts", a.restartAttempts[node.Name],
-							"max_attempts", a.cfg.MaxRestartAttempts,
-						)
-						a.mu.Unlock()
-						continue
-					}
-
 					slog.Warn("node exceeded timeout, triggering restart",
 						"node", node.Name,
 						"missing_for", missingDuration,
@@ -305,6 +298,7 @@ func (a *Agent) checkNodes(ctx context.Context) {
 					a.mu.Unlock()
 
 					// Restart in goroutine to not block other node checks
+					a.restartWg.Add(1)
 					go a.restartNode(ctx, node)
 					continue
 				}
@@ -363,6 +357,8 @@ func (a *Agent) checkNodes(ctx context.Context) {
 }
 
 func (a *Agent) restartNode(ctx context.Context, node config.NodeConfig) {
+	defer a.restartWg.Done()
+
 	ctx, span := tracing.StartSpan(ctx, "agent.restart_node",
 		tracing.NodeAttr(node.Name),
 		tracing.InstanceAttr(node.InstanceID),
@@ -451,7 +447,7 @@ var connectionErrorPatterns = []string{
 	"no such host",
 	"timeout",
 	"deadline exceeded",
-	"EOF",
+	"eof",
 	"network unreachable",
 	"no route to host",
 	"broken pipe",

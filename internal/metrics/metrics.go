@@ -11,9 +11,11 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -144,9 +146,16 @@ func Serve(ctx context.Context, port string) {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
 
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, `{"status":"ok"}`)
+	})
+
 	server := &http.Server{
-		Addr:    port,
-		Handler: mux,
+		Addr:              port,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {
