@@ -1,6 +1,8 @@
 # Oracle Watchdog
 
-![Grafana Dashboard](docs/images/grafana.png)
+<p align="center">
+  <img src="web/static/images/logo.png" alt="oracle-watchdog" width="400">
+</p>
 
 [![CI](https://github.com/afreidah/oracle-watchdog/actions/workflows/ci.yml/badge.svg)](https://github.com/afreidah/oracle-watchdog/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/afreidah/oracle-watchdog/branch/main/graph/badge.svg)](https://codecov.io/gh/afreidah/oracle-watchdog)
@@ -9,6 +11,8 @@
 <p align="center">
   <strong><a href="https://oracle-watchdog.munchbox.cc">Project Website</a></strong>
 </p>
+
+![Grafana Dashboard](docs/images/grafana.png)
 
 A distributed monitoring and recovery system for Oracle Cloud free-tier instances. Oracle periodically reclaims free-tier instances, leaving them in a stuck state that requires a full stop/start cycle to recover. Oracle Watchdog detects unresponsive nodes via Consul session heartbeats and automatically triggers OCI restart cycles.
 
