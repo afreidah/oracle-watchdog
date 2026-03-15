@@ -1,0 +1,98 @@
+# -------------------------------------------------------------------------------
+# GoReleaser Configuration - Release Automation
+#
+# Project: Munchbox / Author: Alex Freidah
+#
+# Builds multi-arch binaries, Debian packages, and GitHub Releases.
+# Triggered by version tag pushes (v*) via GitHub Actions.
+# -------------------------------------------------------------------------------
+
+version: 2
+
+builds:
+  - main: ./cmd/watchdog
+    binary: oracle-watchdog
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/afreidah/oracle-watchdog/internal/tracing.Version={{.Version}}
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+nfpms:
+  - id: deb
+    package_name: oracle-watchdog
+    vendor: Munchbox
+    homepage: https://github.com/afreidah/oracle-watchdog
+    maintainer: Alex Freidah <alex.freidah@gmail.com>
+    description: |
+      Monitors Oracle Cloud free-tier nodes and restarts unresponsive instances.
+      Runs in monitor mode on nodes or agent mode on homelab infrastructure.
+    section: admin
+    priority: optional
+    formats:
+      - deb
+    dependencies:
+      - systemd
+    recommends:
+      - consul
+    contents:
+      - src: ./packaging/oracle-watchdog.service
+        dst: /usr/lib/systemd/system/oracle-watchdog.service
+        file_info:
+          mode: 0644
+
+      - dst: /etc/oracle-watchdog
+        type: dir
+        file_info:
+          mode: 0750
+
+      - src: ./packaging/config.example.yaml
+        dst: /etc/oracle-watchdog/config.example.yaml
+        type: config
+        file_info:
+          mode: 0640
+
+      - src: ./packaging/copyright
+        dst: /usr/share/doc/oracle-watchdog/copyright
+        file_info:
+          mode: 0644
+
+      - src: ./packaging/changelog.gz
+        dst: /usr/share/doc/oracle-watchdog/changelog.Debian.gz
+        file_info:
+          mode: 0644
+
+    scripts:
+      postinstall: ./packaging/postinst
+      preremove: ./packaging/prerm
+      postremove: ./packaging/postrm
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))?\!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\(.+\))?\!?:.+$'
+      order: 1
+    - title: Other
+      order: 999
+
+release:
+  github:
+    owner: afreidah
+    name: oracle-watchdog

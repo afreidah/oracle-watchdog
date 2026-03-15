@@ -94,6 +94,13 @@ type Agent struct {
 func New(cfg *config.Config) *Agent {
 	metrics.AgentNodesMonitored.Set(float64(len(cfg.Nodes)))
 
+	// Initialize restart counters so metrics exist in Prometheus even with zero restarts.
+	for _, node := range cfg.Nodes {
+		metrics.AgentRestartAttempts.WithLabelValues(node.Name)
+		metrics.AgentRestartSuccesses.WithLabelValues(node.Name)
+		metrics.AgentRestartFailures.WithLabelValues(node.Name)
+	}
+
 	return &Agent{
 		cfg:             cfg,
 		consulState:     stateDisconnected,

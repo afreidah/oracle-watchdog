@@ -1,0 +1,539 @@
+{
+  "uid": "oracle-watchdog",
+  "title": "Oracle Watchdog",
+  "tags": [
+    "oracle-watchdog",
+    "monitoring"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "row",
+      "id": 1,
+      "title": "Monitor Mode (Oracle Nodes)",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "type": "table",
+      "id": 2,
+      "title": "Node Status",
+      "description": "Consul connection and session heartbeat status per Oracle node",
+      "gridPos": { "x": 0, "y": 1, "w": 10, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "oracle_watchdog_consul_connected",
+          "instant": true,
+          "format": "table",
+          "refId": "connected"
+        },
+        {
+          "expr": "oracle_watchdog_session_active",
+          "instant": true,
+          "format": "table",
+          "refId": "session"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "seriesToColumns",
+          "options": { "byField": "instance" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time 1": true,
+              "Time 2": true,
+              "__name__ 1": true,
+              "__name__ 2": true,
+              "job 1": true,
+              "job 2": true,
+              "service 1": true,
+              "service 2": true
+            },
+            "renameByName": {
+              "instance": "Node",
+              "Value #connected": "Connected",
+              "Value #session": "Session"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Connected" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": { "text": "Down", "color": "red" },
+                      "1": { "text": "OK", "color": "green" }
+                    }
+                  }
+                ]
+              },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Session" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": { "text": "Inactive", "color": "red" },
+                      "1": { "text": "Active", "color": "green" }
+                    }
+                  }
+                ]
+              },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 3,
+      "title": "Session Activity",
+      "description": "Session renewals and failures across Oracle nodes",
+      "gridPos": { "x": 10, "y": 1, "w": 14, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(oracle_watchdog_session_renewals_total[5m])",
+          "legendFormat": "{{instance}} renewals"
+        },
+        {
+          "expr": "rate(oracle_watchdog_session_failures_total[5m])",
+          "legendFormat": "{{instance}} failures"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": ".*failures.*" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "logs",
+      "id": 4,
+      "title": "Monitor Logs",
+      "description": "Logs from oracle-watchdog monitor processes on Oracle nodes",
+      "gridPos": { "x": 0, "y": 7, "w": 24, "h": 5 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{job=\"systemd\", unit=\"oracle-watchdog.service\"}",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
+    },
+    {
+      "type": "row",
+      "id": 10,
+      "title": "Agent Mode (Homelab)",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "type": "stat",
+      "id": 11,
+      "title": "Consul Connected",
+      "description": "Whether the agent is connected to Consul",
+      "gridPos": { "x": 0, "y": 13, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "max(oracle_watchdog_agent_consul_connected)",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "Disconnected", "color": "red" },
+                "1": { "text": "Connected", "color": "green" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "id": 12,
+      "title": "OCI Connected",
+      "description": "Whether the agent is connected to Oracle Cloud",
+      "gridPos": { "x": 5, "y": 13, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "max(oracle_watchdog_agent_oci_connected)",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "Disconnected", "color": "red" },
+                "1": { "text": "Connected", "color": "green" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "id": 13,
+      "title": "Nodes Monitored",
+      "description": "Number of Oracle nodes configured for monitoring",
+      "gridPos": { "x": 10, "y": 13, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "max(oracle_watchdog_agent_nodes_monitored)",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "id": 14,
+      "title": "Nodes Missing",
+      "description": "Oracle nodes currently missing their Consul session",
+      "gridPos": { "x": 15, "y": 13, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "max(oracle_watchdog_agent_nodes_missing)",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "id": 15,
+      "title": "Consul Errors",
+      "description": "Rate of Consul KV check failures",
+      "gridPos": { "x": 20, "y": 13, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "max(rate(oracle_watchdog_agent_consul_check_failures_total[5m]))",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "row",
+      "id": 20,
+      "title": "Restart Activity",
+      "gridPos": { "x": 0, "y": 17, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "type": "table",
+      "id": 21,
+      "title": "Restart Totals by Node",
+      "description": "Cumulative restart attempts, successes, and failures per Oracle node",
+      "gridPos": { "x": 0, "y": 18, "w": 10, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "oracle_watchdog_agent_restart_attempts_total",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table",
+          "refId": "attempts"
+        },
+        {
+          "expr": "oracle_watchdog_agent_restart_successes_total",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table",
+          "refId": "successes"
+        },
+        {
+          "expr": "oracle_watchdog_agent_restart_failures_total",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table",
+          "refId": "failures"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "seriesToColumns",
+          "options": { "byField": "node" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "__name__ 1": true,
+              "__name__ 2": true,
+              "__name__ 3": true,
+              "instance 1": true,
+              "instance 2": true,
+              "instance 3": true,
+              "job 1": true,
+              "job 2": true,
+              "job 3": true,
+              "service 1": true,
+              "service 2": true,
+              "service 3": true
+            },
+            "renameByName": {
+              "node": "Node",
+              "Value #attempts": "Attempts",
+              "Value #successes": "Successes",
+              "Value #failures": "Failures"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Failures" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "transparent", "value": null },
+                    { "color": "light-red", "value": 1 },
+                    { "color": "red", "value": 5 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Successes" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "transparent", "value": null },
+                    { "color": "green", "value": 1 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 22,
+      "title": "Restart Events",
+      "description": "OCI restart events per node over time",
+      "gridPos": { "x": 10, "y": 18, "w": 14, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "increase(oracle_watchdog_agent_restart_attempts_total[1h])",
+          "legendFormat": "{{node}}"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": { "mode": "normal" }
+          }
+        }
+      }
+    },
+    {
+      "type": "row",
+      "id": 30,
+      "title": "Agent Logs",
+      "gridPos": { "x": 0, "y": 25, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "type": "logs",
+      "id": 31,
+      "title": "Agent Service Logs",
+      "description": "Logs from the oracle-watchdog agent Nomad task",
+      "gridPos": { "x": 0, "y": 26, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{job=\"nomad\", task=\"oracle-watchdog\"}",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": { "list": [] }
+}

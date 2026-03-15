@@ -88,29 +88,32 @@ govulncheck: ## Run Go vulnerability scanner
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 # -------------------------------------------------------------------------
+# CHANGELOG
+# -------------------------------------------------------------------------
+
+changelog: ## Generate CHANGELOG.md from git history
+	git cliff -o CHANGELOG.md
+
+# -------------------------------------------------------------------------
+# RELEASE
+# -------------------------------------------------------------------------
+
+release: ## Tag and push to trigger a GitHub Release (reads .version)
+	git tag $(VERSION)
+	git push origin $(VERSION)
+
+release-local: prep-changelog ## Dry-run GoReleaser locally (no publish)
+	goreleaser release --snapshot --clean
+
+# -------------------------------------------------------------------------
 # DEBIAN PACKAGING
 # -------------------------------------------------------------------------
 
-build-linux: ## Build for Linux amd64
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$(GO_LDFLAGS)" -o bin/oracle-watchdog-linux-amd64 ./cmd/watchdog
-
-build-linux-arm64: ## Build for Linux arm64
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$(GO_LDFLAGS)" -o bin/oracle-watchdog-linux-arm64 ./cmd/watchdog
-
-prep-changelog: ## Prepare changelog for Debian packaging
+prep-changelog: ## Compress changelog for Debian packaging
 	@gzip -9 -n -c packaging/changelog > packaging/changelog.gz
 
-deb: build-linux prep-changelog ## Build Debian package for amd64
-	@mkdir -p dist
-	@cp bin/oracle-watchdog-linux-amd64 bin/oracle-watchdog-linux
-	VERSION=$(VERSION) GOARCH=amd64 nfpm package --packager deb --target dist/
-	@rm -f bin/oracle-watchdog-linux
-
-deb-arm64: build-linux-arm64 prep-changelog ## Build Debian package for arm64
-	@mkdir -p dist
-	@cp bin/oracle-watchdog-linux-arm64 bin/oracle-watchdog-linux
-	VERSION=$(VERSION) GOARCH=arm64 nfpm package --packager deb --target dist/
-	@rm -f bin/oracle-watchdog-linux
+deb: prep-changelog ## Build .deb packages via GoReleaser snapshot
+	goreleaser release --snapshot --clean --skip=publish
 
 # -------------------------------------------------------------------------
 # CLEANUP
@@ -123,5 +126,5 @@ clean: ## Remove build artifacts
 	rm -f packaging/changelog.gz
 	docker rmi $(FULL_TAG) 2>/dev/null || true
 
-.PHONY: help builder build docker push test vet lint govulncheck build-linux build-linux-arm64 prep-changelog deb deb-arm64 clean
+.PHONY: help builder build docker push test vet lint govulncheck changelog release release-local prep-changelog deb clean
 .DEFAULT_GOAL := help
