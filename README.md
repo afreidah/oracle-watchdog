@@ -6,6 +6,10 @@
 [![codecov](https://codecov.io/gh/afreidah/oracle-watchdog/branch/main/graph/badge.svg)](https://codecov.io/gh/afreidah/oracle-watchdog)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+<p align="center">
+  <strong><a href="https://oracle-watchdog.munchbox.cc">Project Website</a></strong>
+</p>
+
 A distributed monitoring and recovery system for Oracle Cloud free-tier instances. Oracle periodically reclaims free-tier instances, leaving them in a stuck state that requires a full stop/start cycle to recover. Oracle Watchdog detects unresponsive nodes via Consul session heartbeats and automatically triggers OCI restart cycles.
 
 - **Monitor mode** runs on each Oracle node, maintaining a Consul session as a heartbeat signal
@@ -213,6 +217,12 @@ make release                # tag and push to trigger GitHub Release
 make release-local          # dry-run GoReleaser locally (no publish)
 make deb                    # build .deb packages via GoReleaser snapshot
 
+# --- Website ---
+make web-serve              # serve project website locally with live reload
+make web-build              # build static site (minified)
+make web-docker             # build website Docker image for local arch
+make web-push               # build and push multi-arch website image
+
 # --- Cleanup ---
 make clean                  # remove build artifacts
 ```
@@ -248,6 +258,13 @@ make clean                  # remove build artifacts
 │       └── tracing.go                # OpenTelemetry tracer setup and span helpers
 ├── grafana/
 │   └── oracle-watchdog.json          # Grafana dashboard definition
+├── web/
+│   ├── hugo.toml                     # Hugo site configuration
+│   ├── Dockerfile                    # Multi-stage Hugo + nginx build
+│   ├── content/                      # Site content (Markdown)
+│   ├── layouts/                      # Custom templates and shortcodes
+│   ├── assets/css/                   # Custom theme variant
+│   └── themes/hugo-theme-relearn/    # Documentation theme (submodule)
 ├── packaging/
 │   ├── oracle-watchdog.service       # Systemd unit file
 │   ├── config.example.yaml           # Example agent configuration
