@@ -116,6 +116,31 @@ deb: prep-changelog ## Build .deb packages via GoReleaser snapshot
 	goreleaser release --snapshot --clean --skip=publish
 
 # -------------------------------------------------------------------------
+# WEBSITE
+# -------------------------------------------------------------------------
+
+WEB_IMAGE  := $(REGISTRY)/oracle-watchdog-web
+WEB_TAG    ?= $(VERSION)
+
+web-serve: ## Serve the project website locally
+	cd web && hugo serve
+
+web-build: ## Build the project website
+	cd web && hugo --minify
+
+web-docker: ## Build website Docker image for local architecture
+	docker build --pull -f web/Dockerfile -t $(WEB_IMAGE):$(WEB_TAG) .
+
+web-push: builder ## Build and push multi-arch website image to registry
+	docker buildx build \
+	  --pull \
+	  --platform $(PLATFORMS) \
+	  -f web/Dockerfile \
+	  -t $(WEB_IMAGE):$(WEB_TAG) \
+	  --output type=image,push=true \
+	  .
+
+# -------------------------------------------------------------------------
 # CLEANUP
 # -------------------------------------------------------------------------
 
@@ -126,5 +151,5 @@ clean: ## Remove build artifacts
 	rm -f packaging/changelog.gz
 	docker rmi $(FULL_TAG) 2>/dev/null || true
 
-.PHONY: help builder build docker push test vet lint govulncheck changelog release release-local prep-changelog deb clean
+.PHONY: help builder build docker push test vet lint govulncheck changelog release release-local prep-changelog deb web-serve web-build web-docker web-push clean
 .DEFAULT_GOAL := help
