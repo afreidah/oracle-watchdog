@@ -1,5 +1,7 @@
 # Oracle Watchdog
 
+![Grafana Dashboard](docs/images/grafana.png)
+
 [![CI](https://github.com/afreidah/oracle-watchdog/actions/workflows/ci.yml/badge.svg)](https://github.com/afreidah/oracle-watchdog/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/afreidah/oracle-watchdog/branch/main/graph/badge.svg)](https://codecov.io/gh/afreidah/oracle-watchdog)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -155,7 +157,7 @@ Required IAM permissions:
 Installed via Debian package on each Oracle node:
 
 ```bash
-apt install ./oracle-watchdog_1.0.0_amd64.deb
+apt install ./oracle-watchdog_<version>_amd64.deb
 systemctl enable --now oracle-watchdog
 ```
 
@@ -195,31 +197,36 @@ oracle-watchdog -mode agent -config config.yaml -tracing
 
 ```bash
 # --- Build ---
-make build
+make build                  # local platform binary
+make docker                 # Docker image for local arch
+make push                   # build and push multi-arch images to registry
 
-# --- Test ---
-make test                   # unit tests with race detector
-
-# --- Lint ---
+# --- Test & Lint ---
+make test                   # unit tests with race detector and coverage
+make vet                    # Go vet static analysis
 make lint                   # golangci-lint
+make govulncheck            # Go vulnerability scanner
 
-# --- Vulnerability scan ---
-make govulncheck
+# --- Release ---
+make changelog              # generate CHANGELOG.md from git history (git-cliff)
+make release                # tag and push to trigger GitHub Release
+make release-local          # dry-run GoReleaser locally (no publish)
+make deb                    # build .deb packages via GoReleaser snapshot
 
-# --- Docker (local arch) ---
-make docker
-
-# --- Debian packages ---
-make deb                    # amd64
-make deb-arm64              # arm64
+# --- Cleanup ---
+make clean                  # remove build artifacts
 ```
 
 ## Project Structure
 
 ```
+├── .goreleaser.yaml                  # GoReleaser release configuration
 ├── .version                          # Semantic version tag
+├── cliff.toml                        # git-cliff changelog generation config
 ├── Dockerfile                        # Multi-stage Alpine build
 ├── Makefile                          # Build, test, package, push targets
+├── nfpm.yaml                         # Debian package configuration (local builds)
+├── config.example.yaml               # Example agent configuration
 ├── cmd/
 │   └── watchdog/
 │       └── main.go                   # Entry point, mode routing, signal handling
@@ -239,6 +246,8 @@ make deb-arm64              # arm64
 │   │   └── client.go                 # OCI SDK wrapper for instance lifecycle
 │   └── tracing/
 │       └── tracing.go                # OpenTelemetry tracer setup and span helpers
+├── grafana/
+│   └── oracle-watchdog.json          # Grafana dashboard definition
 ├── packaging/
 │   ├── oracle-watchdog.service       # Systemd unit file
 │   ├── config.example.yaml           # Example agent configuration
@@ -246,6 +255,8 @@ make deb-arm64              # arm64
 │   ├── copyright                     # License for Debian packaging
 │   └── changelog                     # Release notes for Debian packaging
 └── docs/
+    ├── images/
+    │   └── grafana.png               # Grafana dashboard screenshot
     └── style-guide.md                # Code style conventions
 ```
 
