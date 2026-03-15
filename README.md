@@ -1,8 +1,8 @@
-# Oracle Watchdog
-
 <p align="center">
   <img src="web/static/images/logo.png" alt="oracle-watchdog" width="400">
 </p>
+
+# Oracle Watchdog
 
 [![CI](https://github.com/afreidah/oracle-watchdog/actions/workflows/ci.yml/badge.svg)](https://github.com/afreidah/oracle-watchdog/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/afreidah/oracle-watchdog/branch/main/graph/badge.svg)](https://codecov.io/gh/afreidah/oracle-watchdog)
