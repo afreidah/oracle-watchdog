@@ -3,6 +3,14 @@
 All notable changes to this project are documented in this file.
 
 
+## [0.0.7] - 2026-03-15
+
+### Added
+- Add Hugo documentation site
+
+### Improved
+- update CHANGELOG.md for v0.0.6 (#15)
+
 ## [0.0.6] - 2026-03-15
 
 ### Improved
