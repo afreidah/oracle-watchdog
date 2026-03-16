@@ -3,6 +3,14 @@
 All notable changes to this project are documented in this file.
 
 
+## [1.3.0] - 2026-03-16
+
+### Added
+- Add auto-generated Go API reference to documentation site
+
+### Improved
+- update CHANGELOG.md for v1.2.0 (#27)
+
 ## [1.2.0] - 2026-03-16
 
 ### Added
