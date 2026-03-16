@@ -52,7 +52,8 @@ func NewClient(configPath, profile string) (*Client, error) {
 // RestartInstance performs a stop-then-start cycle on the given instance.
 // Waits for STOPPED state before initiating start.
 func (c *Client) RestartInstance(ctx context.Context, instanceID, compartmentID string) error {
-	ctx, span := tracing.StartSpan(ctx, "oci.restart_instance",
+	ctx, span := tracing.StartClientSpan(ctx, "oci.restart_instance",
+		tracing.PeerServiceAttr("oci"),
 		tracing.InstanceAttr(instanceID),
 	)
 	defer span.End()
@@ -95,7 +96,8 @@ func (c *Client) RestartInstance(ctx context.Context, instanceID, compartmentID 
 }
 
 func (c *Client) stopInstance(ctx context.Context, instanceID string) error {
-	ctx, span := tracing.StartSpan(ctx, "oci.stop_instance",
+	ctx, span := tracing.StartClientSpan(ctx, "oci.stop_instance",
+		tracing.PeerServiceAttr("oci"),
 		tracing.InstanceAttr(instanceID),
 	)
 	defer span.End()
@@ -115,7 +117,8 @@ func (c *Client) stopInstance(ctx context.Context, instanceID string) error {
 }
 
 func (c *Client) startInstance(ctx context.Context, instanceID string) error {
-	ctx, span := tracing.StartSpan(ctx, "oci.start_instance",
+	ctx, span := tracing.StartClientSpan(ctx, "oci.start_instance",
+		tracing.PeerServiceAttr("oci"),
 		tracing.InstanceAttr(instanceID),
 	)
 	defer span.End()
@@ -135,7 +138,8 @@ func (c *Client) startInstance(ctx context.Context, instanceID string) error {
 }
 
 func (c *Client) waitForState(ctx context.Context, instanceID string, targetState core.InstanceLifecycleStateEnum) error {
-	ctx, span := tracing.StartSpan(ctx, "oci.wait_for_state",
+	ctx, span := tracing.StartClientSpan(ctx, "oci.wait_for_state",
+		tracing.PeerServiceAttr("oci"),
 		tracing.InstanceAttr(instanceID),
 		tracing.StateAttr(string(targetState)),
 	)

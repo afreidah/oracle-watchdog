@@ -253,8 +253,17 @@ func (a *Agent) checkNodes(ctx context.Context) {
 	for _, node := range a.cfg.Nodes {
 		key := fmt.Sprintf("%s/%s", sessionKeyPath, node.Name)
 
+		_, kvSpan := tracing.StartClientSpan(ctx, "consul.kv.get",
+			tracing.PeerServiceAttr("consul"),
+			tracing.ServerAddressAttr(a.cfg.ConsulAddress),
+			tracing.NodeAttr(node.Name),
+		)
+
 		pair, _, err := kv.Get(key, nil)
 		if err != nil {
+			kvSpan.RecordError(err)
+			kvSpan.SetStatus(codes.Error, err.Error())
+			kvSpan.End()
 			slog.Warn("failed to check node key", "node", node.Name, "error", err)
 			metrics.AgentConsulCheckFailures.Inc()
 			hadError = true
@@ -268,6 +277,9 @@ func (a *Agent) checkNodes(ctx context.Context) {
 			}
 			continue
 		}
+
+		kvSpan.SetStatus(codes.Ok, "key read")
+		kvSpan.End()
 
 		a.mu.Lock()
 
