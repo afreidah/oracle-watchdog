@@ -101,6 +101,25 @@ func StartSpan(ctx context.Context, name string, attrs ...attribute.KeyValue) (c
 	return Tracer().Start(ctx, name, trace.WithAttributes(attrs...))
 }
 
+// StartClientSpan creates a span with SpanKindClient for outbound service calls.
+// Client spans are required for Tempo's service graph to detect service-to-service edges.
+func StartClientSpan(ctx context.Context, name string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
+	return Tracer().Start(ctx, name,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(attrs...),
+	)
+}
+
+// PeerServiceAttr creates a peer.service attribute for service graph edges.
+func PeerServiceAttr(name string) attribute.KeyValue {
+	return attribute.String("peer.service", name)
+}
+
+// ServerAddressAttr creates a server.address attribute.
+func ServerAddressAttr(addr string) attribute.KeyValue {
+	return attribute.String("server.address", addr)
+}
+
 // NodeAttr creates a node name attribute.
 func NodeAttr(name string) attribute.KeyValue {
 	return attribute.String("node.name", name)
