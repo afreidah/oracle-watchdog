@@ -33,6 +33,10 @@ const (
 	renewInterval  = 10 * time.Second
 	sessionKeyPath = "oracle-watchdog/nodes"
 	metricsPort    = ":9104"
+
+	// heartbeatInterval controls how often a healthy status log is emitted.
+	// With a 10s renew interval, 30 renewals = every 5 minutes.
+	heartbeatRenewals = 30
 )
 
 // -------------------------------------------------------------------------
@@ -69,10 +73,11 @@ type Monitor struct {
 	nodeName      string
 	consulAddress string
 
-	mu        sync.RWMutex
-	client    *consul.Client
-	sessionID string
-	state     state
+	mu            sync.RWMutex
+	client        *consul.Client
+	sessionID     string
+	state         state
+	renewCount    int
 }
 
 // New creates a Monitor for the given node name. Connection to Consul happens
@@ -224,6 +229,7 @@ func (m *Monitor) tryCreateSession(ctx context.Context) {
 	m.mu.Lock()
 	m.sessionID = sessionID
 	m.state = stateActive
+	m.renewCount = 0
 	m.mu.Unlock()
 
 	metrics.MonitorSessionActive.Set(1)
@@ -262,7 +268,13 @@ func (m *Monitor) tryRenew(ctx context.Context) {
 	span.End()
 
 	metrics.MonitorSessionRenewals.Inc()
-	slog.Debug("session renewed", "session_id", sessionID)
+	m.renewCount++
+
+	if m.renewCount%heartbeatRenewals == 0 {
+		slog.Info("heartbeat", "node", m.nodeName, "session_id", sessionID, "renewals", m.renewCount)
+	} else {
+		slog.Debug("session renewed", "session_id", sessionID)
+	}
 }
 
 func (m *Monitor) transitionTo(newState state) {

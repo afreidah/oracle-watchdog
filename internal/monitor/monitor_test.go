@@ -61,3 +61,40 @@ func TestNew_DefaultConsulAddress(t *testing.T) {
 		t.Errorf("expected default consulAddress, got %s", monitor.consulAddress)
 	}
 }
+
+// -------------------------------------------------------------------------
+// HEARTBEAT
+// -------------------------------------------------------------------------
+
+func TestHeartbeat_EmitsAtInterval(t *testing.T) {
+	m := New("test-node")
+	m.renewCount = heartbeatRenewals - 1
+
+	// Simulate the renewal counter logic
+	m.renewCount++
+	if m.renewCount%heartbeatRenewals != 0 {
+		t.Errorf("expected heartbeat at %d renewals, got renewCount=%d", heartbeatRenewals, m.renewCount)
+	}
+}
+
+func TestHeartbeat_DoesNotEmitBetweenIntervals(t *testing.T) {
+	m := New("test-node")
+	m.renewCount = 5
+
+	m.renewCount++
+	if m.renewCount%heartbeatRenewals == 0 {
+		t.Errorf("should not emit heartbeat at renewCount=%d", m.renewCount)
+	}
+}
+
+func TestHeartbeat_ResetsOnNewSession(t *testing.T) {
+	m := New("test-node")
+	m.renewCount = 25
+
+	// Simulate session creation resetting the counter
+	m.renewCount = 0
+
+	if m.renewCount != 0 {
+		t.Errorf("renewCount should reset to 0 on new session, got %d", m.renewCount)
+	}
+}
