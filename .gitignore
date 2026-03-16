@@ -7,3 +7,5 @@ packaging/changelog.gz
 web/public/
 web/resources/
 web/.hugo_build.lock
+web/content/godoc/*.md
+!web/content/godoc/_index.md
