@@ -3,6 +3,14 @@
 All notable changes to this project are documented in this file.
 
 
+## [1.1.0] - 2026-03-16
+
+### Added
+- Add publish-deb target and bump version to v1.1.0
+
+### Improved
+- update CHANGELOG.md for v0.0.9 (#24)
+
 ## [0.0.9] - 2026-03-16
 
 ### Added
