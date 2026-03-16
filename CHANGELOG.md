@@ -3,6 +3,18 @@
 All notable changes to this project are documented in this file.
 
 
+## [0.0.8] - 2026-03-16
+
+### Fixed
+- Fix service graph visibility in Tempo and add Consul client spans
+
+### Improved
+- update readme to have logo
+- update CHANGELOG.md for v0.0.7 (#18)
+
+### Other
+- Move logo above title in README and reorder header elements
+
 ## [0.0.7] - 2026-03-15
 
 ### Added
