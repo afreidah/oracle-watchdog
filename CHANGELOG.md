@@ -3,6 +3,14 @@
 All notable changes to this project are documented in this file.
 
 
+## [0.0.9] - 2026-03-16
+
+### Added
+- Add tracing to monitor mode Consul calls
+
+### Improved
+- update CHANGELOG.md for v0.0.8 (#22)
+
 ## [0.0.8] - 2026-03-16
 
 ### Fixed
