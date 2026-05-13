@@ -25,6 +25,7 @@ import (
 	"github.com/afreidah/oracle-watchdog/internal/metrics"
 	"github.com/afreidah/oracle-watchdog/internal/oci"
 	"github.com/afreidah/oracle-watchdog/internal/tracing"
+	"github.com/afreidah/oracle-watchdog/internal/wandns"
 
 	consul "github.com/hashicorp/consul/api"
 	"go.opentelemetry.io/otel/codes"
@@ -113,10 +114,13 @@ func New(cfg *config.Config) *Agent {
 
 // Run starts the monitoring loop. Never returns an error due to connection
 // issues - continuously retries and emits metrics. Only returns on context
-// cancellation.
+// cancellation. When wan_dns is enabled in config, the Updater runs as a
+// sibling goroutine sharing the same context lifetime.
 func (a *Agent) Run(ctx context.Context) error {
 	metrics.RegisterAgent()
 	go metrics.Serve(ctx, metricsPort)
+
+	a.startWanDNSUpdater(ctx)
 
 	ticker := time.NewTicker(a.cfg.CheckInterval)
 	defer ticker.Stop()
@@ -134,6 +138,22 @@ func (a *Agent) Run(ctx context.Context) error {
 			a.tick(ctx)
 		}
 	}
+}
+
+// startWanDNSUpdater constructs and runs the WAN DNS updater in a background
+// goroutine when wan_dns is enabled. Construction failures are logged and the
+// agent continues without the updater - DDNS is an optional feature and must
+// not block the missing-session detection loop.
+func (a *Agent) startWanDNSUpdater(ctx context.Context) {
+	if !a.cfg.WanDNS.Enabled {
+		return
+	}
+	u, err := wandns.New(a.cfg.WanDNS)
+	if err != nil {
+		slog.Warn("failed to start wan dns updater", "error", err)
+		return
+	}
+	go u.Run(ctx)
 }
 
 func (a *Agent) tick(ctx context.Context) {

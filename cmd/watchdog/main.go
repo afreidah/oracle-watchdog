@@ -8,8 +8,11 @@
 // stuck state requiring a full stop/start cycle to recover.
 //
 // Modes:
-//   - monitor: Runs on Oracle nodes, maintains Consul session heartbeat
-//   - agent: Runs on homelab, watches sessions and triggers OCI stop/start
+//   - monitor: Runs on Oracle nodes, maintains Consul session heartbeat. With
+//     a config file, also runs the WireGuard endpoint resolver.
+//   - agent:   Runs on homelab, watches sessions and triggers OCI stop/start.
+//     With wan_dns enabled, also keeps a Cloudflare DNS record in sync with
+//     the home WAN IP.
 // -------------------------------------------------------------------------------
 
 package main
@@ -28,9 +31,15 @@ import (
 	"github.com/afreidah/oracle-watchdog/internal/tracing"
 )
 
+// defaultConfigPath is where both monitor and agent modes look for the YAML
+// configuration file when -config is not specified. Monitor mode treats the
+// file as optional; agent mode requires it.
+const defaultConfigPath = "/etc/oracle-watchdog/config.yaml"
+
+// main parses CLI flags and dispatches to the requested mode.
 func main() {
 	mode := flag.String("mode", "", "Run mode: 'monitor' or 'agent'")
-	configPath := flag.String("config", "/etc/oracle-watchdog/config.yaml", "Path to config file (agent mode)")
+	configPath := flag.String("config", defaultConfigPath, "Path to config file")
 	nodeName := flag.String("node", "", "Node name for heartbeat (monitor mode, defaults to hostname)")
 	enableTracing := flag.Bool("tracing", false, "Enable OpenTelemetry tracing")
 	dryRun := flag.Bool("dry-run", false, "Log restart actions without executing them (agent mode)")
@@ -69,7 +78,7 @@ func main() {
 
 	switch *mode {
 	case "monitor":
-		runMonitor(ctx, *nodeName)
+		runMonitor(ctx, *configPath, *nodeName)
 	case "agent":
 		runAgent(ctx, *configPath, *dryRun)
 	default:
@@ -83,7 +92,9 @@ func main() {
 // MODE RUNNERS
 // -------------------------------------------------------------------------
 
-func runMonitor(ctx context.Context, nodeName string) {
+// runMonitor loads optional monitor-mode config and starts the heartbeat loop
+// (plus the WireGuard endpoint resolver when configured).
+func runMonitor(ctx context.Context, configPath, nodeName string) {
 	if nodeName == "" {
 		var err error
 		nodeName, err = os.Hostname()
@@ -93,9 +104,18 @@ func runMonitor(ctx context.Context, nodeName string) {
 		}
 	}
 
-	slog.Info("starting monitor mode", "node", nodeName)
+	cfg, err := config.LoadMonitor(configPath)
+	if err != nil {
+		slog.Error("failed to load monitor config", "path", configPath, "error", err)
+		os.Exit(1)
+	}
 
-	m := monitor.New(nodeName)
+	slog.Info("starting monitor mode",
+		"node", nodeName,
+		"wireguard_enabled", cfg.Wireguard.Enabled,
+	)
+
+	m := monitor.New(nodeName, monitor.WithWireguard(cfg.Wireguard))
 
 	if err := m.Run(ctx); err != nil {
 		slog.Error("monitor error", "error", err)
@@ -103,16 +123,23 @@ func runMonitor(ctx context.Context, nodeName string) {
 	}
 }
 
+// runAgent loads required agent-mode config and starts the agent loop (plus
+// the WAN DNS updater when configured).
 func runAgent(ctx context.Context, configPath string, dryRun bool) {
-	cfg, err := config.Load(configPath)
+	cfg, err := config.LoadAgent(configPath)
 	if err != nil {
-		slog.Error("failed to load config", "path", configPath, "error", err)
+		slog.Error("failed to load agent config", "path", configPath, "error", err)
 		os.Exit(1)
 	}
 
 	cfg.DryRun = dryRun
 
-	slog.Info("starting agent mode", "nodes", len(cfg.Nodes), "timeout", cfg.Timeout, "dry_run", dryRun)
+	slog.Info("starting agent mode",
+		"nodes", len(cfg.Nodes),
+		"timeout", cfg.Timeout,
+		"dry_run", dryRun,
+		"wan_dns_enabled", cfg.WanDNS.Enabled,
+	)
 
 	a := agent.New(cfg)
 

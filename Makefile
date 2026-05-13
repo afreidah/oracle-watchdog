@@ -159,7 +159,7 @@ publish-deb: ## Publish .deb packages to Aptly repository
 WEB_IMAGE  := $(REGISTRY)/oracle-watchdog-web
 WEB_TAG    ?= $(VERSION)
 
-GODOC_PKGS := agent config metrics monitor oci tracing
+GODOC_PKGS := agent config metrics monitor oci tracing wandns wgresolver
 
 web-godoc: ## Generate Go API reference markdown for the website
 	@mkdir -p web/content/godoc

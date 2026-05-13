@@ -78,6 +78,23 @@ Runs on each Oracle node as a systemd service. Maintains a Consul session heartb
 - Renews the session every 10 seconds
 - On Consul unavailability, transitions back to `disconnected` and retries
 
+#### WireGuard Endpoint Resolver (optional)
+
+When the monitor config file includes an enabled `wireguard:` block, monitor
+mode also re-resolves the WG server hostname on a configurable interval and
+updates the kernel peer endpoint via netlink when the resolved IP changes.
+Solves the stale-endpoint problem when the WG server lives behind a DDNS
+hostname or fails over between hosts.
+
+- Re-resolves on a configurable interval (default 60s)
+- Forces an immediate re-resolve when the most recent peer handshake is older
+  than the stale threshold (default 180s)
+- Picks the first IPv4 deterministically when DNS returns multiple records
+- Self-healing: never crashes on DNS or netlink errors
+
+Default-disabled. Add the `wireguard:` block from `config.example.yaml` to
+enable.
+
 ### Agent Mode
 
 Runs on homelab infrastructure. Watches for missing node sessions and orchestrates OCI restarts.
@@ -94,17 +111,40 @@ Runs on homelab infrastructure. Watches for missing node sessions and orchestrat
 - Duplicate restart prevention via in-flight tracking
 - Dry-run mode for testing (`-dry-run` flag)
 
+#### WAN-IP DDNS Updater (optional)
+
+When the agent config includes an enabled `wan_dns:` block, agent mode also
+detects the home WAN IPv4 address and keeps a Cloudflare DNS A record in
+sync. Pairs with the monitor-side WireGuard endpoint resolver to make the WG
+tunnel resilient to residential ISP IP changes.
+
+- Detects WAN IP via configurable HTTP providers (default: ipify + 1.1.1.1
+  trace) with sequential failover
+- Updates the Cloudflare A record only when the IP changes
+- Cooldown (default 15m) prevents flapping during ISP DHCP renewal storms
+- Cloudflare API token sourced from an env var, never embedded in config
+- Self-healing: never crashes on detection or Cloudflare errors
+
+Default-disabled. Add the `wan_dns:` block from `config.example.yaml` and
+set `CLOUDFLARE_API_TOKEN` (or your configured env var) to enable. The token
+needs `DNS:Edit` permission on the target zone.
+
 ## Prometheus Metrics
 
 ### Monitor Mode (`:9104`)
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `oracle_watchdog_consul_connected` | gauge | Consul connection status (1=connected, 0=disconnected) |
-| `oracle_watchdog_session_active` | gauge | Session status (1=active, 0=inactive) |
-| `oracle_watchdog_reconnect_attempts_total` | counter | Consul reconnection attempts |
-| `oracle_watchdog_session_renewals_total` | counter | Successful session renewals |
-| `oracle_watchdog_session_failures_total` | counter | Session creation or renewal failures |
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `oracle_watchdog_consul_connected` | gauge | | Consul connection status (1=connected, 0=disconnected) |
+| `oracle_watchdog_session_active` | gauge | | Session status (1=active, 0=inactive) |
+| `oracle_watchdog_reconnect_attempts_total` | counter | | Consul reconnection attempts |
+| `oracle_watchdog_session_renewals_total` | counter | | Successful session renewals |
+| `oracle_watchdog_session_failures_total` | counter | | Session creation or renewal failures |
+| `oracle_watchdog_wg_endpoint_resolution_failures_total` | counter | | Resolver ticks that failed before applying an update |
+| `oracle_watchdog_wg_endpoint_changes_total` | counter | | Successful peer endpoint updates applied |
+| `oracle_watchdog_wg_endpoint_last_update_timestamp_seconds` | gauge | | Unix timestamp of the most recent successful update |
+| `oracle_watchdog_wg_endpoint_current_ip` | gauge | `interface`, `peer`, `ip` | Always 1; current peer endpoint IP encoded in the `ip` label |
+| `oracle_watchdog_wg_peer_handshake_age_seconds` | gauge | `peer` | Seconds since the most recent peer handshake; -1 if never |
 
 ### Agent Mode (`:9105`)
 
@@ -118,10 +158,19 @@ Runs on homelab infrastructure. Watches for missing node sessions and orchestrat
 | `oracle_watchdog_agent_restart_successes_total` | counter | `node` | Successful restarts per node |
 | `oracle_watchdog_agent_restart_failures_total` | counter | `node` | Failed restarts per node |
 | `oracle_watchdog_agent_consul_check_failures_total` | counter | | Consul KV check failures |
+| `oracle_watchdog_wan_ip_current` | gauge | `ip` | Always 1; current detected WAN IPv4 in the `ip` label |
+| `oracle_watchdog_wan_ip_changes_total` | counter | | WAN IP changes detected |
+| `oracle_watchdog_cloudflare_record_updates_total` | counter | `result` | Cloudflare DNS record updates split by `success` or `fail` |
+| `oracle_watchdog_wan_ip_detection_failures_total` | counter | `provider` | Detection failures per provider URL |
+| `oracle_watchdog_wan_dns_last_check_timestamp_seconds` | gauge | | Unix timestamp of the most recent detection attempt |
+| `oracle_watchdog_wan_dns_in_cooldown` | gauge | | 1 when within the post-update cooldown window, 0 otherwise |
 
 ## Configuration
 
-Agent mode loads configuration from a YAML file. Monitor mode uses CLI flags and environment variables.
+Both modes share a single YAML config file (default `/etc/oracle-watchdog/config.yaml`,
+overridden with `-config`). Agent mode requires the file; monitor mode treats
+it as optional and falls back to env-only operation when absent. Each mode
+validates only the fields it needs.
 
 ### Agent Config
 
