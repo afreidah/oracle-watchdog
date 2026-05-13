@@ -24,8 +24,10 @@ import (
 	consul "github.com/hashicorp/consul/api"
 	"go.opentelemetry.io/otel/codes"
 
+	"github.com/afreidah/oracle-watchdog/internal/config"
 	"github.com/afreidah/oracle-watchdog/internal/metrics"
 	"github.com/afreidah/oracle-watchdog/internal/tracing"
+	"github.com/afreidah/oracle-watchdog/internal/wgresolver"
 )
 
 const (
@@ -68,38 +70,75 @@ func (s state) String() string {
 // MONITOR
 // -------------------------------------------------------------------------
 
-// Monitor maintains a Consul session heartbeat for an Oracle node.
+// Monitor maintains a Consul session heartbeat for an Oracle node and
+// optionally drives the WireGuard endpoint resolver alongside it.
 type Monitor struct {
-	nodeName      string
+	// nodeName identifies this node in Consul session metadata and KV paths.
+	nodeName string
+
+	// consulAddress is the host:port of the Consul HTTP API.
 	consulAddress string
 
-	mu            sync.RWMutex
-	client        *consul.Client
-	sessionID     string
-	state         state
-	renewCount    int
+	// wgCfg holds the optional WireGuard resolver configuration. When
+	// wgCfg.Enabled is false, the resolver goroutine does not start.
+	wgCfg config.WireguardConfig
+
+	// mu guards the connection state (client, sessionID, state, renewCount).
+	mu sync.RWMutex
+
+	// client is the active Consul client when state is connecting or active,
+	// nil otherwise.
+	client *consul.Client
+
+	// sessionID is the active Consul session UUID, empty when disconnected.
+	sessionID string
+
+	// state tracks the connection state machine.
+	state state
+
+	// renewCount counts successful session renewals since the last
+	// transition to active.
+	renewCount int
+}
+
+// Option configures the Monitor. Used to enable optional features without
+// changing the New signature for existing callers.
+type Option func(*Monitor)
+
+// WithWireguard attaches a WireGuard endpoint resolver configuration. The
+// resolver only runs when cfg.Enabled is true.
+func WithWireguard(cfg config.WireguardConfig) Option {
+	return func(m *Monitor) { m.wgCfg = cfg }
 }
 
 // New creates a Monitor for the given node name. Connection to Consul happens
-// asynchronously in Run().
-func New(nodeName string) *Monitor {
+// asynchronously in Run.
+func New(nodeName string, opts ...Option) *Monitor {
 	consulAddr := "consul.service.consul:8500"
 	if addr := os.Getenv("CONSUL_HTTP_ADDR"); addr != "" {
 		consulAddr = addr
 	}
 
-	return &Monitor{
+	m := &Monitor{
 		nodeName:      nodeName,
 		consulAddress: consulAddr,
 		state:         stateDisconnected,
 	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
 }
 
 // Run starts the monitor loop. Never returns an error due to Consul issues -
 // continuously retries and emits metrics. Only returns on context cancellation.
+// When the WireGuard resolver is enabled, it runs as a sibling goroutine
+// sharing the same context lifetime.
 func (m *Monitor) Run(ctx context.Context) error {
 	metrics.RegisterMonitor()
 	go metrics.Serve(ctx, metricsPort)
+
+	m.startWireguardResolver(ctx)
 
 	ticker := time.NewTicker(renewInterval)
 	defer ticker.Stop()
@@ -113,6 +152,25 @@ func (m *Monitor) Run(ctx context.Context) error {
 			m.tick(ctx)
 		}
 	}
+}
+
+// startWireguardResolver constructs and runs the endpoint resolver in a
+// background goroutine when wgCfg is enabled. Construction failures are
+// logged and the monitor continues without the resolver - WireGuard is an
+// optional feature and must not block the heartbeat loop.
+func (m *Monitor) startWireguardResolver(ctx context.Context) {
+	if !m.wgCfg.Enabled {
+		return
+	}
+	r, err := wgresolver.New(m.wgCfg)
+	if err != nil {
+		slog.Warn("failed to start wireguard endpoint resolver", "error", err)
+		return
+	}
+	go func() {
+		defer func() { _ = r.Close() }()
+		r.Run(ctx)
+	}()
 }
 
 func (m *Monitor) tick(ctx context.Context) {

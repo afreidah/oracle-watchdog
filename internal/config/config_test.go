@@ -128,7 +128,7 @@ nodes:
 				t.Fatalf("failed to write config: %v", err)
 			}
 
-			_, err := Load(configPath)
+			_, err := LoadAgent(configPath)
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -140,7 +140,7 @@ nodes:
 }
 
 func TestLoad_FileNotFound(t *testing.T) {
-	_, err := Load("/nonexistent/path/config.yaml")
+	_, err := LoadAgent("/nonexistent/path/config.yaml")
 	if err == nil {
 		t.Fatal("expected error for nonexistent file")
 	}
@@ -153,7 +153,7 @@ func TestLoad_InvalidYAML(t *testing.T) {
 		t.Fatalf("failed to write config: %v", err)
 	}
 
-	_, err := Load(configPath)
+	_, err := LoadAgent(configPath)
 	if err == nil {
 		t.Fatal("expected error for invalid YAML")
 	}
@@ -168,7 +168,7 @@ func writeAndLoad(t *testing.T, content string) *Config {
 		t.Fatalf("failed to write config: %v", err)
 	}
 
-	cfg, err := Load(configPath)
+	cfg, err := LoadAgent(configPath)
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
 	}

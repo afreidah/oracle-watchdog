@@ -33,3 +33,44 @@ nodes:
   - name: oracle-arm-2
     instance_id: ocid1.instance.oc1.iad.xxx
     compartment_id: ocid1.compartment.oc1..xxx
+
+# -------------------------------------------------------------------------
+# Optional: Monitor-mode WireGuard endpoint resolver
+#
+# Re-resolves the WG server hostname periodically and updates the kernel
+# peer endpoint via netlink. Use when the WG server's WAN IP can change
+# (residential ISP, DDNS-fronted endpoint).
+#
+# Default-disabled. Omit the block entirely to keep monitor mode running
+# only the Consul session heartbeat.
+# -------------------------------------------------------------------------
+wireguard:
+  enabled: false
+  interface: wg0
+  peer_pubkey: ""
+  endpoint_hostname: wg.munchbox.cc
+  endpoint_port: 51820
+  resolve_interval: 60s
+  stale_handshake_threshold: 180s
+
+# -------------------------------------------------------------------------
+# Optional: Agent-mode WAN-IP DDNS updater
+#
+# Detects the home WAN IP and keeps a Cloudflare A record in sync. The
+# Cloudflare API token must live in the env var named below; do not embed
+# it in this file.
+#
+# Default-disabled. Omit the block entirely to keep agent mode running
+# only the missing-session detector.
+# -------------------------------------------------------------------------
+wan_dns:
+  enabled: false
+  hostname: wg.munchbox.cc
+  cloudflare:
+    api_token_env: CLOUDFLARE_API_TOKEN
+    zone_id: ""
+  detection_providers:
+    - https://api.ipify.org
+    - https://1.1.1.1/cdn-cgi/trace
+  poll_interval: 5m
+  cooldown: 15m
