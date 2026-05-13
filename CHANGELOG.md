@@ -3,6 +3,17 @@
 All notable changes to this project are documented in this file.
 
 
+## [1.4.1] - 2026-05-13
+
+### Added
+- add endpoint resolver (monitor) and WAN DNS updater (agent)
+
+### Improved
+- update CHANGELOG.md for v1.3.0 (#30)
+
+### Other
+- publish-deb: target s3:munchbox: prefix instead of root
+
 ## [1.3.0] - 2026-03-16
 
 ### Added
