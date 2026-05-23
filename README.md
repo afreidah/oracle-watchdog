@@ -14,11 +14,11 @@
 
 ![Grafana Dashboard](docs/images/grafana.png)
 
-A distributed monitoring and recovery system for Oracle Cloud free-tier instances. Oracle periodically reclaims free-tier instances, leaving them in a stuck state that requires a full stop/start cycle to recover. Oracle Watchdog detects unresponsive nodes via Consul session heartbeats and automatically triggers OCI restart cycles.
+A distributed monitoring and recovery system for Oracle Cloud free-tier instances. Oracle periodically reclaims free-tier instances, leaving them in a stuck state that requires a full stop/start cycle to recover. Oracle Watchdog detects unresponsive nodes by polling Consul KV for session-locked heartbeats that expire when a node goes silent, then automatically triggers OCI restart cycles.
 
-- **Monitor mode** runs on each Oracle node, maintaining a Consul session as a heartbeat signal
-- **Agent mode** runs on homelab infrastructure, watching for expired sessions and orchestrating OCI stop/start cycles
-- **Self-healing design** ensures the service never crashes due to Consul or OCI unavailability — it continuously retries and emits metrics on current state
+- **Monitor mode** runs on each Oracle node, holding a session-locked KV entry in Consul as its heartbeat signal
+- **Agent mode** runs on infrastructure separate from the monitored nodes, polling Consul KV for missing heartbeats and orchestrating OCI stop/start cycles
+- **Self-healing design** ensures the service never crashes due to Consul or OCI unavailability - it continuously retries and emits metrics on current state
 - **OpenTelemetry tracing** provides visibility into restart cycles via Tempo
 
 ```
@@ -81,10 +81,10 @@ Runs on each Oracle node as a systemd service. Maintains a Consul session heartb
 #### WireGuard Endpoint Resolver (optional)
 
 When the monitor config file includes an enabled `wireguard:` block, monitor
-mode also re-resolves the WG server hostname on a configurable interval and
-updates the kernel peer endpoint via netlink when the resolved IP changes.
-Solves the stale-endpoint problem when the WG server lives behind a DDNS
-hostname or fails over between hosts.
+mode also re-resolves a configured peer hostname on an interval and updates
+the kernel peer endpoint via netlink (`wgctrl`) when the resolved IP changes.
+Useful when a WireGuard peer is reached by hostname and that hostname's IP
+can change underneath the running tunnel.
 
 - Re-resolves on a configurable interval (default 60s)
 - Forces an immediate re-resolve when the most recent peer handshake is older
@@ -92,12 +92,12 @@ hostname or fails over between hosts.
 - Picks the first IPv4 deterministically when DNS returns multiple records
 - Self-healing: never crashes on DNS or netlink errors
 
-Default-disabled. Add the `wireguard:` block from `config.example.yaml` to
-enable.
+Default-disabled and independent of the core OCI-restart flow. Add the
+`wireguard:` block from `config.example.yaml` to enable.
 
 ### Agent Mode
 
-Runs on homelab infrastructure. Watches for missing node sessions and orchestrates OCI restarts.
+Runs on infrastructure separate from the monitored nodes. Polls Consul KV for missing heartbeats and orchestrates OCI restarts.
 
 **Restart sequence:**
 1. Issues OCI stop command
@@ -114,20 +114,24 @@ Runs on homelab infrastructure. Watches for missing node sessions and orchestrat
 #### WAN-IP DDNS Updater (optional)
 
 When the agent config includes an enabled `wan_dns:` block, agent mode also
-detects the home WAN IPv4 address and keeps a Cloudflare DNS A record in
-sync. Pairs with the monitor-side WireGuard endpoint resolver to make the WG
-tunnel resilient to residential ISP IP changes.
+detects the host's public IPv4 address and keeps a Cloudflare A record in
+sync. A general-purpose DDNS updater bundled into the same binary so the
+agent host can publish its own changing public IP without an external client.
 
-- Detects WAN IP via configurable HTTP providers (default: ipify + 1.1.1.1
-  trace) with sequential failover
-- Updates the Cloudflare A record only when the IP changes
-- Cooldown (default 15m) prevents flapping during ISP DHCP renewal storms
-- Cloudflare API token sourced from an env var, never embedded in config
+- Detects the public IPv4 via configurable HTTP providers (default: ipify +
+  Cloudflare trace) tried in order, first success wins
+- Parses both plain-text bodies and Cloudflare-trace `ip=` lines; IPv4 only
+- Updates the Cloudflare A record only when the value changes
+- Cooldown (default 15m, minimum 1m) enforces a minimum interval between
+  successive record updates
+- Cloudflare API token is read once at startup from a configurable env var
+  and never enters the loaded config struct
 - Self-healing: never crashes on detection or Cloudflare errors
 
-Default-disabled. Add the `wan_dns:` block from `config.example.yaml` and
-set `CLOUDFLARE_API_TOKEN` (or your configured env var) to enable. The token
-needs `DNS:Edit` permission on the target zone.
+Default-disabled and independent of the core OCI-restart flow. Add the
+`wan_dns:` block from `config.example.yaml` and set `CLOUDFLARE_API_TOKEN`
+(or your configured env var) to enable. The token needs `DNS:Edit` permission
+on the target zone.
 
 ## Prometheus Metrics
 
@@ -231,8 +235,11 @@ Builds and pushes multi-arch images (`linux/amd64`, `linux/arm64`) to the config
 ### Nomad (Agent Mode)
 
 ```bash
-source munchbox-env.sh && cd nomad && make run JOB=oracle-watchdog
+nomad job run path/to/oracle-watchdog.nomad.hcl
 ```
+
+The jobspec should run the published Docker image with `-mode agent`, mount
+the config file and OCI credentials, and expose the `:9105` metrics port.
 
 ### CLI Usage
 

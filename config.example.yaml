@@ -9,8 +9,12 @@
 # How long a node must be unresponsive before triggering restart
 timeout: 5m
 
-# How often to check for missing node sessions
+# How often to check for missing node heartbeats
 check_interval: 30s
+
+# Max consecutive restart attempts per node before the agent stops trying.
+# Zero means unlimited. The per-node counter resets when the node recovers.
+max_restart_attempts: 0
 
 # Consul connection
 consul_address: consul.service.consul:8500
@@ -37,18 +41,22 @@ nodes:
 # -------------------------------------------------------------------------
 # Optional: Monitor-mode WireGuard endpoint resolver
 #
-# Re-resolves the WG server hostname periodically and updates the kernel
-# peer endpoint via netlink. Use when the WG server's WAN IP can change
-# (residential ISP, DDNS-fronted endpoint).
+# Re-resolves a configured WireGuard peer hostname on an interval and
+# updates the kernel peer endpoint via netlink when the resolved IPv4
+# changes. Forces an immediate update when the most recent peer handshake
+# exceeds stale_handshake_threshold even if the IP did not change.
 #
-# Default-disabled. Omit the block entirely to keep monitor mode running
-# only the Consul session heartbeat.
+# Default-disabled and independent of the core OCI-restart flow. Omit the
+# block entirely to keep monitor mode running only the Consul heartbeat.
+#
+# Validation minimums: resolve_interval >= 10s,
+# stale_handshake_threshold >= 30s, endpoint_port in 1-65535.
 # -------------------------------------------------------------------------
 wireguard:
   enabled: false
   interface: wg0
   peer_pubkey: ""
-  endpoint_hostname: wg.munchbox.cc
+  endpoint_hostname: wg.example.com
   endpoint_port: 51820
   resolve_interval: 60s
   stale_handshake_threshold: 180s
@@ -56,16 +64,21 @@ wireguard:
 # -------------------------------------------------------------------------
 # Optional: Agent-mode WAN-IP DDNS updater
 #
-# Detects the home WAN IP and keeps a Cloudflare A record in sync. The
-# Cloudflare API token must live in the env var named below; do not embed
-# it in this file.
+# Detects the host's public IPv4 via the configured detection providers
+# (tried in order, first parseable response wins) and keeps a Cloudflare
+# A record in sync. IPv4 only. The Cloudflare API token must live in the
+# env var named below; it is read once at startup and never embedded in
+# this file.
 #
-# Default-disabled. Omit the block entirely to keep agent mode running
-# only the missing-session detector.
+# Default-disabled and independent of the core OCI-restart flow. Omit the
+# block entirely to keep agent mode running only the missing-heartbeat
+# detector.
+#
+# Validation minimums: poll_interval >= 30s, cooldown >= 1m.
 # -------------------------------------------------------------------------
 wan_dns:
   enabled: false
-  hostname: wg.munchbox.cc
+  hostname: ddns.example.com
   cloudflare:
     api_token_env: CLOUDFLARE_API_TOKEN
     zone_id: ""

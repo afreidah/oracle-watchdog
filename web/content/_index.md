@@ -32,12 +32,12 @@ description: "Distributed monitoring and recovery system for Oracle Cloud free-t
 
 <h2 style="text-align: center; color: #f59e0b;">Automatic recovery for Oracle Cloud free-tier nodes</h2>
 
-Oracle periodically reclaims free-tier instances, leaving them in a stuck state that requires a full stop/start cycle to recover. Oracle Watchdog detects unresponsive nodes via Consul session heartbeats and automatically triggers OCI restart cycles.
+Oracle periodically reclaims free-tier instances, leaving them in a stuck state that requires a full stop/start cycle to recover. Oracle Watchdog detects unresponsive nodes by polling Consul KV for session-locked heartbeats that expire when a node goes silent, then automatically triggers OCI restart cycles.
 
 <div class="hero-bullets">
 
-- **Monitor mode** runs on each Oracle node, maintaining a Consul session as a heartbeat signal
-- **Agent mode** runs on homelab infrastructure, watching for expired sessions and orchestrating OCI stop/start cycles
+- **Monitor mode** runs on each Oracle node, holding a session-locked KV entry in Consul as its heartbeat signal
+- **Agent mode** runs on infrastructure separate from the monitored nodes, polling Consul KV for missing heartbeats and orchestrating OCI stop/start cycles
 - **Self-healing design** ensures the service never crashes due to Consul or OCI unavailability
 - **OpenTelemetry tracing** provides visibility into restart cycles via Tempo
 
@@ -58,14 +58,14 @@ Oracle periodically reclaims free-tier instances, leaving them in a stuck state 
   <div class="feature-item">
     <div>
       <strong>Automatic OCI Recovery</strong>
-      <p>Agent detects missing sessions and triggers OCI stop/start cycles to recover stuck instances.</p>
+      <p>Agent detects missing heartbeats and triggers OCI stop/start cycles to recover stuck instances.</p>
     </div>
     <div class="feature-detail">Configurable timeout before restart (default 5m). Issues OCI stop, polls until STOPPED, then issues start and polls until RUNNING. Tracks consecutive attempts per node and resets on recovery.</div>
   </div>
   <div class="feature-item">
     <div>
       <strong>Self-Healing Design</strong>
-      <p>Never crashes due to Consul or OCI unavailability — continuously retries connections.</p>
+      <p>Never crashes due to Consul or OCI unavailability - continuously retries connections.</p>
     </div>
     <div class="feature-detail">Both monitor and agent modes use state machines that transition between disconnected, connecting, and active states. Consecutive failure tracking triggers connection resets. Duplicate restart prevention via in-flight tracking.</div>
   </div>
@@ -85,9 +85,23 @@ Oracle periodically reclaims free-tier instances, leaving them in a stuck state 
   </div>
   <div class="feature-item">
     <div>
-      <strong>Dual Deployment</strong>
-      <p>Monitor runs as systemd service on Oracle nodes, agent runs as Nomad job on homelab.</p>
+      <strong>Flexible Deployment</strong>
+      <p>One binary, two modes. Monitor ships as a systemd-friendly Debian package, agent ships as a Docker image.</p>
     </div>
-    <div class="feature-detail">Debian packages for monitor deployment via Ansible. Docker images for agent deployment via Nomad. Both modes share the same binary with a -mode flag.</div>
+    <div class="feature-detail">Same binary on both sides, selected by the -mode flag. Run monitors directly on each Oracle node and the agent anywhere that can reach Consul and the OCI API.</div>
+  </div>
+  <div class="feature-item">
+    <div>
+      <strong>Optional: WireGuard Endpoint Resolver</strong>
+      <p>Monitor mode can re-resolve a configured WG peer hostname and refresh the kernel peer endpoint when its IP changes.</p>
+    </div>
+    <div class="feature-detail">Default-disabled and independent of the core OCI-restart flow. Forces an immediate re-resolve when the most recent peer handshake exceeds the configured staleness threshold. Updates the kernel via netlink (wgctrl).</div>
+  </div>
+  <div class="feature-item">
+    <div>
+      <strong>Optional: Cloudflare WAN-IP DDNS Updater</strong>
+      <p>Agent mode can detect the host's public IPv4 and keep a Cloudflare A record in sync.</p>
+    </div>
+    <div class="feature-detail">Default-disabled and independent of the core OCI-restart flow. Polls configurable detection providers (ipify, Cloudflare trace) in order, IPv4 only. Cloudflare API token read once at startup from an env var.</div>
   </div>
 </div>
