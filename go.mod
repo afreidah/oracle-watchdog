@@ -5,7 +5,7 @@ go 1.26.1
 toolchain go1.26.3
 
 require (
-	github.com/hashicorp/consul/api v1.33.7
+	github.com/hashicorp/consul/api v1.34.3
 	github.com/oracle/oci-go-sdk/v65 v65.110.0
 	github.com/prometheus/client_golang v1.23.2
 	go.opentelemetry.io/otel v1.43.0
