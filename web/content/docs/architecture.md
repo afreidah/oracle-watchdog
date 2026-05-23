@@ -56,7 +56,7 @@ weight: 5
     '    ON2 -->|"heartbeat"| CONSUL',
     '    ON3 -->|"heartbeat"| CONSUL',
     '    ON4 -->|"heartbeat"| CONSUL',
-    '    CONSUL -->|"poll missing sessions"| AGENT',
+    '    CONSUL -->|"poll missing KV"| AGENT',
     '    AGENT -->|"stop/start"| OCI',
     '    ON1 -->|"/metrics"| PROM',
     '    ON2 -->|"/metrics"| PROM',
@@ -93,11 +93,11 @@ weight: 5
 
   var nodeInfo = {
     'ON1':     { title: 'Oracle Node (Monitor Mode)', detail: 'Runs as a systemd service on each Oracle Cloud node. Creates a Consul session with 30s TTL and renews it every 10 seconds. Writes a KV pair locked to the session at oracle-watchdog/nodes/{nodename}. If the node is reclaimed by Oracle, the session expires and the KV pair is automatically deleted.' },
-    'ON2':     { title: 'Oracle Node (Monitor Mode)', detail: 'Each node independently maintains its own Consul session. State machine: disconnected → connecting → active. Deployed via Debian packages and Ansible.' },
+    'ON2':     { title: 'Oracle Node (Monitor Mode)', detail: 'Each node independently maintains its own Consul session. State machine: disconnected -> connecting -> active. Distributed as a Debian package with a systemd unit.' },
     'ON3':     { title: 'Oracle Node (Monitor Mode)', detail: 'Exposes Prometheus metrics on port 9104 for connection status, session health, and renewal rates.' },
-    'ON4':     { title: 'Oracle Node (Monitor Mode)', detail: 'All monitors share the same binary, differentiated by hostname. Monitors never crash — they continuously retry on Consul unavailability.' },
-    'CONSUL':  { title: 'Consul (KV + Sessions)', detail: 'Stores session heartbeats as KV pairs at oracle-watchdog/nodes/{nodename}. Sessions use delete behavior — when a session expires (node unresponsive for 30s), the associated KV pair is automatically removed. The agent polls these keys to detect missing nodes.' },
-    'AGENT':   { title: 'Oracle Watchdog Agent', detail: 'Runs on homelab infrastructure as a Nomad job. Polls Consul on a configurable interval (default 120s) for missing node KV pairs. When a node has been absent longer than the timeout (default 900s), triggers an OCI stop/start cycle. Tracks consecutive restart attempts per node, resets on recovery.' },
+    'ON4':     { title: 'Oracle Node (Monitor Mode)', detail: 'All monitors share the same binary, differentiated by hostname. Monitors never crash - they continuously retry on Consul unavailability.' },
+    'CONSUL':  { title: 'Consul (KV + Sessions)', detail: 'Stores session heartbeats as KV pairs at oracle-watchdog/nodes/{nodename}. Sessions use delete behavior - when a session expires (node unresponsive for 30s), the associated KV pair is automatically removed. The agent polls these keys to detect missing nodes.' },
+    'AGENT':   { title: 'Oracle Watchdog Agent', detail: 'Runs on infrastructure separate from the monitored nodes (Docker / Nomad / any host that can reach Consul and the OCI API). Polls Consul on a configurable interval (default 30s) for missing node KV pairs. When a node has been absent longer than the timeout (default 5m), triggers an OCI stop/start cycle. Tracks consecutive restart attempts per node, resets on recovery.' },
     'OCI':     { title: 'Oracle Cloud API', detail: 'OCI Compute API for instance lifecycle management. The agent issues a stop command, polls instance state until STOPPED (10s intervals, 5m timeout), then issues a start command and polls until RUNNING. Requires instance-action (STOP, START) and instance-read IAM permissions.' },
     'PROM':    { title: 'Prometheus', detail: 'Scrapes monitor metrics on port 9104 and agent metrics on port 9105. 13 metric families covering connection status, session health, renewals, failures, reconnects, node counts, per-node restart counters, and check failures.' },
     'TEMPO':   { title: 'Tempo', detail: 'Receives OpenTelemetry traces from the agent via OTLP gRPC. Each restart cycle creates a trace with spans for node detection, OCI stop, state polling, and OCI start. Includes node name, instance ID, and error details.' },
@@ -135,14 +135,14 @@ weight: 5
 1. Each Oracle node runs the monitor as a **systemd service**
 2. Monitor creates a **Consul session** with 30-second TTL and `delete` behavior
 3. A **KV pair** is written at `oracle-watchdog/nodes/{nodename}`, locked to the session
-4. The session is **renewed every 10 seconds** — if renewal fails, the monitor reconnects automatically
+4. The session is **renewed every 10 seconds** - if renewal fails, the monitor reconnects automatically
 5. If a node becomes unresponsive (reclaimed by Oracle), the session expires and the **KV pair is deleted**
 
-### Agent Mode (Homelab)
+### Agent Mode
 
-1. The agent runs as a **Nomad job** on homelab infrastructure
-2. On each check interval (default 120s), it **polls Consul** for missing node KV pairs
-3. When a node has been absent longer than the **timeout** (default 900s), it triggers a restart:
+1. The agent runs on **infrastructure separate from the monitored nodes** (Docker, Nomad, or any host that can reach Consul and the OCI API)
+2. On each check interval (default 30s), it **polls Consul** for missing node KV pairs
+3. When a node has been absent longer than the **timeout** (default 5m), it triggers a restart:
    - Issues an **OCI stop** command
    - Polls instance state until **STOPPED** (10s intervals, 5m max wait)
    - Issues an **OCI start** command
@@ -155,4 +155,22 @@ weight: 5
 - Configurable **max restart attempts** per node (0 = unlimited)
 - **Dry-run mode** for testing (`-dry-run` flag)
 - **Connection health tracking** with consecutive failure thresholds for both Consul and OCI
-- Automatic **connection state machine** transitions — never crashes, always retries
+- Automatic **connection state machine** transitions - never crashes, always retries
+
+### Optional Features
+
+Both modes ship with an additional optional subsystem that runs in the same
+process when enabled in the config file. Both are default-disabled and
+independent of the core OCI-restart flow.
+
+- **WireGuard Endpoint Resolver** (monitor) - re-resolves a configured WG
+  peer hostname on an interval and refreshes the kernel peer endpoint via
+  `wgctrl` when the resolved IP changes. Forces an immediate re-resolve when
+  the most recent peer handshake exceeds the staleness threshold.
+- **Cloudflare WAN-IP DDNS Updater** (agent) - detects the host's public
+  IPv4 via configurable HTTP providers and PATCHes a Cloudflare A record
+  when the value changes. IPv4 only. The Cloudflare API token is read once
+  at startup from a configurable env var.
+
+See the [README](../readme/) and the package godoc for configuration
+reference.
