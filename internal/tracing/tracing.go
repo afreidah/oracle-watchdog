@@ -25,9 +25,14 @@ import (
 )
 
 const (
-	serviceName    = "oracle-watchdog"
-	tracerName     = "github.com/afreidah/oracle-watchdog"
-	defaultOTLPURL = "http://tempo.service.consul:4318"
+	serviceName = "oracle-watchdog"
+	tracerName  = "github.com/afreidah/oracle-watchdog"
+
+	// defaultOTLPEndpoint is a bare host:port with no scheme: otlptracehttp's
+	// WithEndpoint rejects a scheme (WithEndpointURL is the URL form), and
+	// WithInsecure already selects plain HTTP. Port 4318 is Tempo's OTLP/HTTP
+	// receiver; 4317 is gRPC and would silently drop every export.
+	defaultOTLPEndpoint = "tempo.service.consul:4318"
 )
 
 // Version of the service for trace metadata. Set at build time via
@@ -36,14 +41,13 @@ var Version = "dev"
 
 var tracer trace.Tracer
 
-// Init initializes the OpenTelemetry tracer with OTLP HTTP exporter.
-// Uses OTEL_EXPORTER_OTLP_ENDPOINT env var or defaults to Tempo service.
-// Returns a shutdown function that should be deferred.
-func Init(ctx context.Context, mode string) (func(context.Context) error, error) {
-	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	if endpoint == "" {
-		endpoint = defaultOTLPURL
-	}
+// Init initializes the OpenTelemetry tracer with the OTLP/HTTP exporter and
+// returns a shutdown function that should be deferred. The endpoint resolves
+// in precedence order: the endpoint argument (from config), then the
+// OTEL_EXPORTER_OTLP_ENDPOINT env var, then defaultOTLPEndpoint. All forms are
+// a bare host:port with no scheme.
+func Init(ctx context.Context, mode, endpoint string) (func(context.Context) error, error) {
+	endpoint = resolveEndpoint(endpoint)
 
 	exporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint(endpoint),
@@ -82,6 +86,19 @@ func Init(ctx context.Context, mode string) (func(context.Context) error, error)
 	slog.Info("tracing initialized", "endpoint", endpoint, "mode", mode)
 
 	return tp.Shutdown, nil
+}
+
+// resolveEndpoint applies the endpoint precedence: the explicit argument (from
+// config) wins, then OTEL_EXPORTER_OTLP_ENDPOINT, then defaultOTLPEndpoint. The
+// result is always a bare host:port with no scheme, as otlptracehttp expects.
+func resolveEndpoint(endpoint string) string {
+	if endpoint == "" {
+		endpoint = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	}
+	if endpoint == "" {
+		endpoint = defaultOTLPEndpoint
+	}
+	return endpoint
 }
 
 // Tracer returns the global tracer instance.

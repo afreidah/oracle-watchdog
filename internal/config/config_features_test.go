@@ -268,3 +268,63 @@ nodes:
     compartment_id: ocid1.compartment.test
 `
 }
+
+// -------------------------------------------------------------------------
+// TRACING CONFIG
+// -------------------------------------------------------------------------
+
+// TestLoadMonitor_TracingParsed verifies the shared tracing block parses for
+// monitor mode with both fields populated.
+func TestLoadMonitor_TracingParsed(t *testing.T) {
+	p := writeTempConfig(t, `
+tracing:
+  enabled: true
+  endpoint: "tempo.service.consul:4318"
+`)
+	cfg, err := LoadMonitor(p)
+	if err != nil {
+		t.Fatalf("LoadMonitor: %v", err)
+	}
+	if !cfg.Tracing.Enabled {
+		t.Error("expected tracing enabled")
+	}
+	if cfg.Tracing.Endpoint != "tempo.service.consul:4318" {
+		t.Errorf("endpoint = %q, want %q", cfg.Tracing.Endpoint, "tempo.service.consul:4318")
+	}
+}
+
+// TestLoadAgent_TracingParsed verifies the shared tracing block parses for
+// agent mode alongside the required agent fields.
+func TestLoadAgent_TracingParsed(t *testing.T) {
+	p := writeTempConfig(t, validAgentYAML()+`
+tracing:
+  enabled: true
+  endpoint: "tempo.service.consul:4318"
+`)
+	cfg, err := LoadAgent(p)
+	if err != nil {
+		t.Fatalf("LoadAgent: %v", err)
+	}
+	if !cfg.Tracing.Enabled {
+		t.Error("expected tracing enabled")
+	}
+	if cfg.Tracing.Endpoint != "tempo.service.consul:4318" {
+		t.Errorf("endpoint = %q, want %q", cfg.Tracing.Endpoint, "tempo.service.consul:4318")
+	}
+}
+
+// TestLoadMonitor_TracingDefaultsDisabled verifies an absent tracing block
+// leaves tracing disabled with an empty endpoint, so resolution falls through
+// to the env var or built-in default at Init time.
+func TestLoadMonitor_TracingDefaultsDisabled(t *testing.T) {
+	cfg, err := LoadMonitor(filepath.Join(t.TempDir(), "absent.yaml"))
+	if err != nil {
+		t.Fatalf("LoadMonitor: %v", err)
+	}
+	if cfg.Tracing.Enabled {
+		t.Error("expected tracing disabled by default")
+	}
+	if cfg.Tracing.Endpoint != "" {
+		t.Errorf("expected empty endpoint by default, got %q", cfg.Tracing.Endpoint)
+	}
+}

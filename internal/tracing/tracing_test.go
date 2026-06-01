@@ -12,6 +12,7 @@ package tracing
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"go.opentelemetry.io/otel"
@@ -140,5 +141,46 @@ func TestServerAddressAttr(t *testing.T) {
 	}
 	if attr.Value.AsString() != "consul.service.consul:8500" {
 		t.Errorf("value = %q, want %q", attr.Value.AsString(), "consul.service.consul:8500")
+	}
+}
+
+// -------------------------------------------------------------------------
+// ENDPOINT RESOLUTION
+// -------------------------------------------------------------------------
+
+// TestResolveEndpoint_ArgumentWins verifies the explicit config endpoint takes
+// precedence over the environment variable and the built-in default.
+func TestResolveEndpoint_ArgumentWins(t *testing.T) {
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "env.example:4318")
+
+	if got := resolveEndpoint("cfg.example:4318"); got != "cfg.example:4318" {
+		t.Errorf("resolveEndpoint = %q, want config value %q", got, "cfg.example:4318")
+	}
+}
+
+// TestResolveEndpoint_EnvFallback verifies the env var is used when no config
+// endpoint is supplied.
+func TestResolveEndpoint_EnvFallback(t *testing.T) {
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "env.example:4318")
+
+	if got := resolveEndpoint(""); got != "env.example:4318" {
+		t.Errorf("resolveEndpoint = %q, want env value %q", got, "env.example:4318")
+	}
+}
+
+// TestResolveEndpoint_Default verifies the built-in default is used when both
+// the config endpoint and the env var are empty, and that it carries no scheme.
+func TestResolveEndpoint_Default(t *testing.T) {
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+
+	got := resolveEndpoint("")
+	if got != defaultOTLPEndpoint {
+		t.Errorf("resolveEndpoint = %q, want default %q", got, defaultOTLPEndpoint)
+	}
+	if got != "tempo.service.consul:4318" {
+		t.Errorf("default endpoint = %q, want bare host:port on the HTTP port", got)
+	}
+	if strings.Contains(got, "://") {
+		t.Errorf("default endpoint %q must not contain a scheme (otlptracehttp.WithEndpoint rejects it)", got)
 	}
 }
