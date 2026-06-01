@@ -3,6 +3,26 @@
 All notable changes to this project are documented in this file.
 
 
+## [1.4.3] - 2026-06-01
+
+### Improved
+- update CHANGELOG.md for v1.4.1 (#42)
+
+### Other
+- Make tracing config-driven and fix OTLP endpoint (#52)
+- build(deps): bump github.com/oracle/oci-go-sdk/v65
+- build(deps): bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp
+- build(deps): bump go.opentelemetry.io/otel/trace from 1.43.0 to 1.44.0
+- build(deps): bump github.com/hashicorp/consul/api from 1.33.7 to 1.34.3
+- build(deps): bump github.com/hashicorp/consul/api from 1.33.4 to 1.33.7
+- build(deps): bump github.com/oracle/oci-go-sdk/v65 from 65.81.0 to 65.110.0
+- build(deps): bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp from 1.42.0 to 1.43.0
+- build(deps): bump the go_modules group across 1 directory with 2 updates
+- build(deps): bump codecov/codecov-action from 5 to 6
+- build(deps): bump google.golang.org/grpc
+- build(deps): bump actions/github-script from 8 to 9
+- clarify optional features and correct agent loop description
+
 ## [1.4.1] - 2026-05-13
 
 ### Added
