@@ -60,6 +60,21 @@ type Config struct {
 
 	// WanDNS configures the agent-side WAN-IP DDNS updater. Default-disabled.
 	WanDNS WanDNSConfig `yaml:"wan_dns"`
+
+	// Tracing configures OpenTelemetry trace export. Shared by both modes and
+	// default-disabled; the -tracing CLI flag force-enables regardless.
+	Tracing TracingConfig `yaml:"tracing"`
+}
+
+// TracingConfig configures OpenTelemetry trace export. Shared by both modes.
+type TracingConfig struct {
+	// Enabled toggles tracer initialization. When false, and the -tracing CLI
+	// override is unset, no tracer provider is installed.
+	Enabled bool `yaml:"enabled"`
+
+	// Endpoint is the OTLP/HTTP collector as a bare host:port with no scheme.
+	// Empty falls back to OTEL_EXPORTER_OTLP_ENDPOINT, then a built-in default.
+	Endpoint string `yaml:"endpoint"`
 }
 
 // OCIConfig holds Oracle Cloud authentication settings.

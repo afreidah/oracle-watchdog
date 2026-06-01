@@ -90,3 +90,16 @@ wan_dns:
     - https://1.1.1.1/cdn-cgi/trace
   poll_interval: 5m
   cooldown: 15m
+
+# -------------------------------------------------------------------------
+# Optional: OpenTelemetry tracing (both modes)
+#
+# Default-disabled. When enabled, spans export to Tempo over OTLP/HTTP. The
+# endpoint is a bare host:port with no scheme; leave it empty to fall back
+# to OTEL_EXPORTER_OTLP_ENDPOINT and then the built-in default
+# (tempo.service.consul:4318). The -tracing CLI flag force-enables tracing
+# regardless of the enabled value here.
+# -------------------------------------------------------------------------
+tracing:
+  enabled: false
+  endpoint: "tempo.service.consul:4318"
