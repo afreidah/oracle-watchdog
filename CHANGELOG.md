@@ -3,6 +3,14 @@
 All notable changes to this project are documented in this file.
 
 
+## [1.4.4] - 2026-06-02
+
+### Fixed
+- Fix tracing init: schemaless resource to avoid Schema URL conflict (#55)
+
+### Improved
+- update CHANGELOG.md for v1.4.3 (#54)
+
 ## [1.4.3] - 2026-06-01
 
 ### Improved
