@@ -57,10 +57,14 @@ func Init(ctx context.Context, mode, endpoint string) (func(context.Context) err
 		return nil, err
 	}
 
+	// The custom resource is schemaless: resource.Default() carries the SDK's
+	// own schema URL, and Merge errors if a second non-empty schema URL differs
+	// from it. Pinning semconv.SchemaURL here would conflict whenever the SDK
+	// outpaces the imported semconv version, so omit it and let Merge adopt the
+	// default's schema.
 	res, err := resource.Merge(
 		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
+		resource.NewSchemaless(
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(Version),
 			attribute.String("mode", mode),

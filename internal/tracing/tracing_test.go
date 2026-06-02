@@ -184,3 +184,24 @@ func TestResolveEndpoint_Default(t *testing.T) {
 		t.Errorf("default endpoint %q must not contain a scheme (otlptracehttp.WithEndpoint rejects it)", got)
 	}
 }
+
+// -------------------------------------------------------------------------
+// INIT
+// -------------------------------------------------------------------------
+
+// TestInit_Succeeds exercises the full initialization path, including the
+// resource.Merge that previously failed with a conflicting Schema URL when the
+// SDK default outpaced the imported semconv version. A nil error proves the
+// tracer provider was installed rather than silently skipped.
+func TestInit_Succeeds(t *testing.T) {
+	shutdown, err := Init(context.Background(), "monitor", "tempo.invalid:4318")
+	if err != nil {
+		t.Fatalf("Init returned error: %v", err)
+	}
+	if shutdown == nil {
+		t.Fatal("Init returned a nil shutdown func")
+	}
+	if err := shutdown(context.Background()); err != nil {
+		t.Errorf("shutdown returned error: %v", err)
+	}
+}
