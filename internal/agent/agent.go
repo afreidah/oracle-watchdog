@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Agent Mode
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Runs on homelab infrastructure and monitors Consul for missing Oracle node
 // sessions. When a node's session has been absent longer than the configured

@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------
 # GoReleaser Configuration - Release Automation
 #
-# Project: Munchbox / Author: Alex Freidah
+# Author: Alex Freidah
 #
 # Builds multi-arch binaries, Debian packages, and GitHub Releases.
 # Triggered by version tag pushes (v*) via GitHub Actions.

@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Tracing
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // OpenTelemetry tracing infrastructure for shipping traces to Tempo. Provides
 // initialization and span helpers for the restart cycle and node monitoring.
@@ -30,9 +30,10 @@ const (
 
 	// defaultOTLPEndpoint is a bare host:port with no scheme: otlptracehttp's
 	// WithEndpoint rejects a scheme (WithEndpointURL is the URL form), and
-	// WithInsecure already selects plain HTTP. Port 4318 is Tempo's OTLP/HTTP
-	// receiver; 4317 is gRPC and would silently drop every export.
-	defaultOTLPEndpoint = "tempo.service.consul:4318"
+	// WithInsecure already selects plain HTTP. 4318 is the OTLP/HTTP port (4317
+	// is gRPC and would silently drop every export). Operators point this at a
+	// real collector via the tracing.endpoint config or OTEL_EXPORTER_OTLP_ENDPOINT.
+	defaultOTLPEndpoint = "localhost:4318"
 )
 
 // Version of the service for trace metadata. Set at build time via

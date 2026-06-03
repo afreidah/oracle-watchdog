@@ -135,12 +135,12 @@ func TestPeerServiceAttr(t *testing.T) {
 }
 
 func TestServerAddressAttr(t *testing.T) {
-	attr := ServerAddressAttr("consul.service.consul:8500")
+	attr := ServerAddressAttr("localhost:8500")
 	if string(attr.Key) != "server.address" {
 		t.Errorf("key = %q, want %q", attr.Key, "server.address")
 	}
-	if attr.Value.AsString() != "consul.service.consul:8500" {
-		t.Errorf("value = %q, want %q", attr.Value.AsString(), "consul.service.consul:8500")
+	if attr.Value.AsString() != "localhost:8500" {
+		t.Errorf("value = %q, want %q", attr.Value.AsString(), "localhost:8500")
 	}
 }
 
@@ -177,7 +177,7 @@ func TestResolveEndpoint_Default(t *testing.T) {
 	if got != defaultOTLPEndpoint {
 		t.Errorf("resolveEndpoint = %q, want default %q", got, defaultOTLPEndpoint)
 	}
-	if got != "tempo.service.consul:4318" {
+	if got != "localhost:4318" {
 		t.Errorf("default endpoint = %q, want bare host:port on the HTTP port", got)
 	}
 	if strings.Contains(got, "://") {

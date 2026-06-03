@@ -46,7 +46,7 @@ func TestStartTracing_ForceOverride(t *testing.T) {
 // without needing the override.
 func TestStartTracing_ConfigEnabled(t *testing.T) {
 	stop := startTracing(context.Background(), "monitor",
-		config.TracingConfig{Enabled: true, Endpoint: "tempo.service.consul:4318"}, false)
+		config.TracingConfig{Enabled: true, Endpoint: "localhost:4318"}, false)
 	if stop == nil {
 		t.Fatal("startTracing returned a nil stop func")
 	}

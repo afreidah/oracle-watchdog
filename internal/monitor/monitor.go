@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Monitor Mode
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Runs on each Oracle node and maintains a Consul session with TTL. The session
 // acts as a heartbeat - if the node becomes unresponsive (due to Oracle
@@ -114,7 +114,7 @@ func WithWireguard(cfg config.WireguardConfig) Option {
 // New creates a Monitor for the given node name. Connection to Consul happens
 // asynchronously in Run.
 func New(nodeName string, opts ...Option) *Monitor {
-	consulAddr := "consul.service.consul:8500"
+	consulAddr := "localhost:8500"
 	if addr := os.Getenv("CONSUL_HTTP_ADDR"); addr != "" {
 		consulAddr = addr
 	}

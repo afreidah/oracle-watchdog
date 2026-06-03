@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Configuration Feature-Block Tests
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Covers the validation branches for the optional wireguard and wan_dns
 // feature blocks plus the LoadMonitor entry point.
@@ -279,7 +279,7 @@ func TestLoadMonitor_TracingParsed(t *testing.T) {
 	p := writeTempConfig(t, `
 tracing:
   enabled: true
-  endpoint: "tempo.service.consul:4318"
+  endpoint: "localhost:4318"
 `)
 	cfg, err := LoadMonitor(p)
 	if err != nil {
@@ -288,8 +288,8 @@ tracing:
 	if !cfg.Tracing.Enabled {
 		t.Error("expected tracing enabled")
 	}
-	if cfg.Tracing.Endpoint != "tempo.service.consul:4318" {
-		t.Errorf("endpoint = %q, want %q", cfg.Tracing.Endpoint, "tempo.service.consul:4318")
+	if cfg.Tracing.Endpoint != "localhost:4318" {
+		t.Errorf("endpoint = %q, want %q", cfg.Tracing.Endpoint, "localhost:4318")
 	}
 }
 
@@ -299,7 +299,7 @@ func TestLoadAgent_TracingParsed(t *testing.T) {
 	p := writeTempConfig(t, validAgentYAML()+`
 tracing:
   enabled: true
-  endpoint: "tempo.service.consul:4318"
+  endpoint: "localhost:4318"
 `)
 	cfg, err := LoadAgent(p)
 	if err != nil {
@@ -308,8 +308,8 @@ tracing:
 	if !cfg.Tracing.Enabled {
 		t.Error("expected tracing enabled")
 	}
-	if cfg.Tracing.Endpoint != "tempo.service.consul:4318" {
-		t.Errorf("endpoint = %q, want %q", cfg.Tracing.Endpoint, "tempo.service.consul:4318")
+	if cfg.Tracing.Endpoint != "localhost:4318" {
+		t.Errorf("endpoint = %q, want %q", cfg.Tracing.Endpoint, "localhost:4318")
 	}
 }
 

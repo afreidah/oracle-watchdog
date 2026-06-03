@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Configuration
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Loads and validates oracle-watchdog configuration from YAML. The same file
 // serves both monitor and agent modes; each mode validates only the fields it
@@ -222,7 +222,7 @@ func agentDefaults() *Config {
 	return &Config{
 		Timeout:       5 * time.Minute,
 		CheckInterval: 30 * time.Second,
-		ConsulAddress: "consul.service.consul:8500",
+		ConsulAddress: "localhost:8500",
 		OCI: OCIConfig{
 			ConfigPath: "~/.oci/config",
 			Profile:    "DEFAULT",

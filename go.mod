@@ -2,8 +2,6 @@ module github.com/afreidah/oracle-watchdog
 
 go 1.26.1
 
-toolchain go1.26.3
-
 require (
 	github.com/hashicorp/consul/api v1.33.7
 	github.com/oracle/oci-go-sdk/v65 v65.116.0

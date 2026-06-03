@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Metrics
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Shared Prometheus metrics infrastructure. Provides metric definitions for both
 // monitor and agent modes, plus a reusable HTTP metrics server.

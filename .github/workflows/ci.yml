@@ -84,7 +84,8 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.26'
+          check-latest: true
 
       - name: Lint
         uses: golangci/golangci-lint-action@v9
@@ -100,16 +101,11 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.26'
+          check-latest: true
 
       - name: Unit tests
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v6
-        with:
-          files: coverage.out
-          token: ${{ secrets.CODECOV_TOKEN }}
 
   govulncheck:
     needs: [changes]
@@ -120,13 +116,20 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.26'
+          check-latest: true
 
+      # TEMP: 1.26.4 (stdlib CVE fix) is newer than setup-go's downloader; force
+      # Go's toolchain download. Remove once `go-version: 1.26` resolves to 1.26.4+.
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        env:
+          GOTOOLCHAIN: go1.26.4
 
       - name: Run govulncheck
         run: govulncheck ./...
+        env:
+          GOTOOLCHAIN: go1.26.4
 
   # ---------------------------------------------------------------------------
   # DOCKER IMAGES (push to main only)

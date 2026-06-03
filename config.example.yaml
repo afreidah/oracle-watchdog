@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------
 # Oracle Watchdog - Example Configuration
 #
-# Project: Munchbox / Author: Alex Freidah
+# Author: Alex Freidah
 #
 # Copy to /etc/oracle-watchdog/config.yaml and fill in OCI instance details.
 # -------------------------------------------------------------------------------
@@ -17,7 +17,7 @@ check_interval: 30s
 max_restart_attempts: 0
 
 # Consul connection
-consul_address: consul.service.consul:8500
+consul_address: localhost:8500
 
 # OCI authentication
 oci:
@@ -94,9 +94,9 @@ wan_dns:
 # Default-disabled. When enabled, spans export to Tempo over OTLP/HTTP. The
 # endpoint is a bare host:port with no scheme; leave it empty to fall back
 # to OTEL_EXPORTER_OTLP_ENDPOINT and then the built-in default
-# (tempo.service.consul:4318). The -tracing CLI flag force-enables tracing
+# (localhost:4318). The -tracing CLI flag force-enables tracing
 # regardless of the enabled value here.
 # -------------------------------------------------------------------------
 tracing:
   enabled: false
-  endpoint: "tempo.service.consul:4318"
+  endpoint: "localhost:4318"

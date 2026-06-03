@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Configuration Tests
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 // -------------------------------------------------------------------------------
 
 package config
@@ -64,7 +64,7 @@ nodes:
 	if cfg.CheckInterval != 30*time.Second {
 		t.Errorf("expected default check_interval 30s, got %v", cfg.CheckInterval)
 	}
-	if cfg.ConsulAddress != "consul.service.consul:8500" {
+	if cfg.ConsulAddress != "localhost:8500" {
 		t.Errorf("expected default consul_address, got %s", cfg.ConsulAddress)
 	}
 }
