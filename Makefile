@@ -7,10 +7,11 @@
 # and Debian packages.
 # -------------------------------------------------------------------------------
 
-# --- Container registry, defaulting to GHCR under the repo owner (so forks
-#     build to their own namespace). Override REGISTRY to publish elsewhere. ---
+# --- Container registry: DOCKER_REGISTRY env if set, else GHCR under the repo
+#     owner (derived from the git remote, so forks build to their own
+#     namespace). Override REGISTRY directly to publish elsewhere. ---
 REPO_OWNER ?= $(shell git config --get remote.origin.url 2>/dev/null | sed -E 's#(\.git)?$$##; s#.*[/:]([^/]+)/[^/]+$$#\1#')
-REGISTRY   ?= ghcr.io/$(REPO_OWNER)
+REGISTRY   ?= $(or $(DOCKER_REGISTRY),ghcr.io/$(REPO_OWNER))
 IMAGE      := oracle-watchdog
 VERSION    ?= $(shell cat .version)
 
