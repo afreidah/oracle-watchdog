@@ -3,6 +3,20 @@
 All notable changes to this project are documented in this file.
 
 
+## [1.4.5] - 2026-06-03
+
+### Improved
+- update CHANGELOG.md for v1.4.4 (#57)
+
+### Other
+- force GOTOOLCHAIN=go1.26.4 for govulncheck + release (temp)
+- check-latest for Go (get 1.26.4, manifest lags) + drop CodiumAI PR review
+- track latest Go 1.26 patch instead of pinning a toolchain
+- Genericize infra defaults to localhost (no baked-in private addresses)
+- Makefile: honor DOCKER_REGISTRY env for REGISTRY override
+- Genericize for open source + drop codecov (#59)
+- Align aptly publish-deb with s3-orchestrator pattern
+
 ## [1.4.4] - 2026-06-02
 
 ### Fixed
