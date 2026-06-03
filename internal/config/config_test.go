@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Configuration Tests
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 // -------------------------------------------------------------------------------
 
 package config

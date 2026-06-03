@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - WAN-IP DDNS Updater
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Periodically detects the home WAN IPv4 address by polling lightweight
 // detection providers and keeps a Cloudflare DNS A record in sync. Solves the

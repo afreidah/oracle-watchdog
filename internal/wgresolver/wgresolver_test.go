@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - WireGuard Endpoint Resolver Tests
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 // -------------------------------------------------------------------------------
 
 package wgresolver

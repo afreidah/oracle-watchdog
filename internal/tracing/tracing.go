@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Tracing
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // OpenTelemetry tracing infrastructure for shipping traces to Tempo. Provides
 // initialization and span helpers for the restart cycle and node monitoring.

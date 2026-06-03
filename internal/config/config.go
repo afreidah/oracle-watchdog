@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Configuration
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Loads and validates oracle-watchdog configuration from YAML. The same file
 // serves both monitor and agent modes; each mode validates only the fields it

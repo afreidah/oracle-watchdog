@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - WAN-IP DDNS Updater Tests
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 // -------------------------------------------------------------------------------
 
 package wandns

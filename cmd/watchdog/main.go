@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Main Entry Point
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Monitors Oracle Cloud free-tier nodes and restarts them when unresponsive.
 // Oracle periodically reclaims free-tier instances, which can leave them in a

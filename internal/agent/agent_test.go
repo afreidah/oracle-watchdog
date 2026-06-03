@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Agent Tests
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 // -------------------------------------------------------------------------------
 
 package agent

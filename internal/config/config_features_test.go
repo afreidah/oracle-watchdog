@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Configuration Feature-Block Tests
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Covers the validation branches for the optional wireguard and wan_dns
 // feature blocks plus the LoadMonitor entry point.

@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - WireGuard Endpoint Resolver
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Periodically re-resolves the configured WireGuard server hostname and updates
 // the kernel peer endpoint via netlink when the resolved IP changes. Also

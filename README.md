@@ -5,7 +5,6 @@
 # Oracle Watchdog
 
 [![CI](https://github.com/afreidah/oracle-watchdog/actions/workflows/ci.yml/badge.svg)](https://github.com/afreidah/oracle-watchdog/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/afreidah/oracle-watchdog/branch/main/graph/badge.svg)](https://codecov.io/gh/afreidah/oracle-watchdog)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 <p align="center">

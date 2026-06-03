@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------
 # Oracle Watchdog Systemd Service
 #
-# Project: Munchbox / Author: Alex Freidah
+# Author: Alex Freidah
 #
 # Systemd unit file for oracle-watchdog monitor mode on Oracle nodes.
 # -------------------------------------------------------------------------------

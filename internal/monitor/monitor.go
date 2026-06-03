@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - Monitor Mode
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Runs on each Oracle node and maintains a Consul session with TTL. The session
 // acts as a heartbeat - if the node becomes unresponsive (due to Oracle

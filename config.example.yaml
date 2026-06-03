@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------
 # Oracle Watchdog - Example Configuration
 #
-# Project: Munchbox / Author: Alex Freidah
+# Author: Alex Freidah
 #
 # Copy to /etc/oracle-watchdog/config.yaml and fill in OCI instance details.
 # -------------------------------------------------------------------------------

@@ -4,10 +4,13 @@
 # Author: Alex Freidah
 #
 # Go-based Oracle Cloud instance watchdog. Builds multi-arch container images
-# and Debian packages for deployment to the munchbox infrastructure.
+# and Debian packages.
 # -------------------------------------------------------------------------------
 
-REGISTRY   ?= registry.munchbox.cc
+# --- Container registry, defaulting to GHCR under the repo owner (so forks
+#     build to their own namespace). Override REGISTRY to publish elsewhere. ---
+REPO_OWNER ?= $(shell git config --get remote.origin.url 2>/dev/null | sed -E 's#(\.git)?$$##; s#.*[/:]([^/]+)/[^/]+$$#\1#')
+REGISTRY   ?= ghcr.io/$(REPO_OWNER)
 IMAGE      := oracle-watchdog
 VERSION    ?= $(shell cat .version)
 
@@ -119,18 +122,18 @@ deb: prep-changelog ## Build .deb packages via GoReleaser snapshot
 # APTLY PUBLISHING
 # -------------------------------------------------------------------------
 
-# --- Endpoint/repo/prefix come from munchbox-env.sh (APTLY_*) with fallbacks. ---
-APTLY_URL            ?= $(or $(APTLY_ENDPOINT),https://apt.munchbox.cc)
-APTLY_REPO           ?= $(or $(APTLY_REPOSITORY),munchbox)
+# --- Endpoint/repo/prefix come from the APTLY_* env vars, with fallbacks. ---
+APTLY_URL            ?= $(or $(APTLY_ENDPOINT),https://apt.example.com)
+APTLY_REPO           ?= $(or $(APTLY_REPOSITORY),stable)
 APTLY_USER           ?= admin
-APTLY_PUBLISH_PREFIX ?= $(or $(APTLY_PREFIX),s3:munchbox:)
+APTLY_PUBLISH_PREFIX ?= $(or $(APTLY_PREFIX),.)
 APTLY_DISTRIBUTION   ?= stable
 APTLY_ARCHITECTURES  ?= amd64,arm64
 DEB_DIR              ?= dist
 SNAPSHOT_NAME        ?= $(IMAGE)-$(shell date +%Y%m%d-%H%M%S)
 
 publish-deb: ## Publish .deb packages to Aptly repository
-	@if [ -z "$(APTLY_PASS)" ]; then echo "Error: APTLY_PASS not set (source munchbox-env.sh)"; exit 1; fi
+	@if [ -z "$(APTLY_PASS)" ]; then echo "Error: APTLY_PASS not set"; exit 1; fi
 	@echo "Publishing packages to $(APTLY_URL)..."
 	@for deb in $(DEB_DIR)/*.deb; do \
 		echo "Uploading $$(basename $$deb)..."; \

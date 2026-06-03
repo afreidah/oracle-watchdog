@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------
 // Oracle Watchdog - OCI Client
 //
-// Project: Munchbox / Author: Alex Freidah
+// Author: Alex Freidah
 //
 // Wraps the OCI Go SDK for instance lifecycle management. Provides stop/start
 // operations with proper state waiting for the restart cycle required to

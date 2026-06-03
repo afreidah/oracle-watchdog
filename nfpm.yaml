@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------
 # nfpm Configuration - Debian Package Build
 #
-# Project: Munchbox / Author: Alex Freidah
+# Author: Alex Freidah
 #
 # Defines package metadata and contents for building .deb packages via nfpm.
 # Includes systemd service, config directory, and post-install scripts.
