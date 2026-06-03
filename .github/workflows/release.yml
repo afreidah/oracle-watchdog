@@ -59,6 +59,8 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TEMP: force the patched toolchain until setup-go ships 1.26.4+.
+          GOTOOLCHAIN: go1.26.4
 
       - name: Install git-cliff
         uses: orhun/git-cliff-action@v4
