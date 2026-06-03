@@ -222,7 +222,7 @@ func agentDefaults() *Config {
 	return &Config{
 		Timeout:       5 * time.Minute,
 		CheckInterval: 30 * time.Second,
-		ConsulAddress: "consul.service.consul:8500",
+		ConsulAddress: "localhost:8500",
 		OCI: OCIConfig{
 			ConfigPath: "~/.oci/config",
 			Profile:    "DEFAULT",

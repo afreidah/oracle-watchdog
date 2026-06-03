@@ -27,7 +27,7 @@ ProtectHome=true
 PrivateTmp=true
 
 # Environment for Consul connection
-Environment=CONSUL_HTTP_ADDR=consul.service.consul:8500
+Environment=CONSUL_HTTP_ADDR=localhost:8500
 
 [Install]
 WantedBy=multi-user.target

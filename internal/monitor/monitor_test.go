@@ -57,7 +57,7 @@ func TestNew_DefaultConsulAddress(t *testing.T) {
 
 	monitor := New("test-node")
 
-	if monitor.consulAddress != "consul.service.consul:8500" {
+	if monitor.consulAddress != "localhost:8500" {
 		t.Errorf("expected default consulAddress, got %s", monitor.consulAddress)
 	}
 }

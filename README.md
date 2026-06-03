@@ -180,7 +180,7 @@ validates only the fields it needs.
 ```yaml
 timeout: 5m                              # How long node must be missing before restart (default: 5m)
 check_interval: 30s                      # How often to scan for missing sessions (default: 30s)
-consul_address: "consul.service.consul:8500"  # Consul HTTP address (default: consul.service.consul:8500)
+consul_address: "localhost:8500"  # Consul HTTP address (default: localhost:8500)
 max_restart_attempts: 0                  # Max consecutive restarts before giving up, 0 = unlimited
 
 oci:
@@ -200,7 +200,7 @@ nodes:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CONSUL_HTTP_ADDR` | `consul.service.consul:8500` | Consul HTTP address |
+| `CONSUL_HTTP_ADDR` | `localhost:8500` | Consul HTTP address |
 
 ### OCI Credentials
 
