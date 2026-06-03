@@ -7,7 +7,7 @@
 # free-tier instances via Consul sessions and triggers OCI restart cycles.
 # -------------------------------------------------------------------------------
 
-FROM --platform=$BUILDPLATFORM golang:1.26.1-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
 
 ARG VERSION=dev
 ARG TARGETOS

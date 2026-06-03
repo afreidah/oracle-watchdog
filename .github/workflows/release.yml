@@ -27,7 +27,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.26'
 
       - name: Lint
         run: make lint
@@ -45,7 +45,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.26'
 
       - name: Prep Debian changelog
         run: make prep-changelog
