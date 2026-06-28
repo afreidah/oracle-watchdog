@@ -16,15 +16,16 @@ on:
     branches: [main]
   pull_request:
 
-permissions:
-  contents: read
-
+# Permissions are declared per job (least privilege, githubactions:S8264)
+# rather than workflow-wide.
 jobs:
   # ---------------------------------------------------------------------------
   # PATH DETECTION
   # ---------------------------------------------------------------------------
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       go: ${{ steps.filter.outputs.go }}
     steps:
@@ -50,6 +51,8 @@ jobs:
   version-check:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -79,6 +82,8 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
 
@@ -96,6 +101,8 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
 
@@ -111,6 +118,8 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       # Official action does checkout + setup-go + install + run, so the workflow
       # carries no `go install ...@version` of its own (not lock-file
@@ -131,6 +140,8 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
