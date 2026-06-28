@@ -112,22 +112,15 @@ jobs:
     if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version: '1.26'
-          check-latest: true
-
-      # TEMP: 1.26.4 (stdlib CVE fix) is newer than setup-go's downloader; force
-      # Go's toolchain download. Remove once `go-version: 1.26` resolves to 1.26.4+.
-      - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
-        env:
-          GOTOOLCHAIN: go1.26.4
-
+      # Official action does checkout + setup-go + install + run, so the workflow
+      # carries no `go install ...@version` of its own (not lock-file
+      # deterministic, githubactions:S8545).
+      # TEMP: force the 1.26.4 toolchain (stdlib CVE fix) via GOTOOLCHAIN until
+      # go.mod's go directive moves past it. The action's go commands inherit it.
       - name: Run govulncheck
-        run: govulncheck ./...
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
+        with:
+          go-version-file: go.mod
         env:
           GOTOOLCHAIN: go1.26.4
 
@@ -197,7 +190,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Official action avoids piping a downloaded installer into a shell
+      # (githubactions:S8482 / S6506).
       - name: Scan image with Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-          trivy image --exit-code 1 --severity CRITICAL,HIGH ghcr.io/afreidah/oracle-watchdog:${{ steps.version.outputs.version }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/afreidah/oracle-watchdog:${{ steps.version.outputs.version }}
+          exit-code: 1
+          severity: CRITICAL,HIGH

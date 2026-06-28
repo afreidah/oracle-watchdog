@@ -172,6 +172,42 @@ func TestCheckNodes_MaxAttemptsBlocksRestart(t *testing.T) {
 	}
 }
 
+func TestCheckNodes_NilClientReturnsEarly(t *testing.T) {
+	node := config.NodeConfig{Name: "n1", InstanceID: "i-1", CompartmentID: "c-1"}
+	a := testAgent(node)
+	a.consul = nil // connected state but no client (defensive guard)
+	a.consulState = stateConnected
+
+	// Must not panic and must leave tracking untouched.
+	a.checkNodes(context.Background())
+
+	if len(a.missingSince) != 0 {
+		t.Error("expected no tracking changes when client is nil")
+	}
+}
+
+func TestCheckNodes_AlreadyRestartingSkips(t *testing.T) {
+	node := config.NodeConfig{Name: "n1", InstanceID: "i-1", CompartmentID: "c-1"}
+	a := testAgent(node)
+	a.cfg.Timeout = time.Millisecond
+	a.consul = &fakeConsul{} // missing
+	a.consulState = stateConnected
+	oci := &fakeOCI{}
+	a.oci = oci
+	a.ociState = stateConnected
+
+	// A restart is already in flight for this node.
+	a.restarting["n1"] = true
+	a.missingSince["n1"] = time.Now().Add(-time.Hour)
+
+	a.checkNodes(context.Background())
+	a.restartWg.Wait()
+
+	if oci.restartCount() != 0 {
+		t.Errorf("expected no new restart while one is in flight, got %d", oci.restartCount())
+	}
+}
+
 func TestCheckNodes_ConnectionErrorDisconnects(t *testing.T) {
 	node := config.NodeConfig{Name: "n1", InstanceID: "i-1", CompartmentID: "c-1"}
 	a := testAgent(node)
