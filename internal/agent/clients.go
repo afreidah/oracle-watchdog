@@ -30,9 +30,9 @@ type ConsulClient interface {
 	GetKV(key string) (*consul.KVPair, error)
 }
 
-// OCIClient is the subset of the OCI client the agent uses: a stop/start cycle
-// on a single instance. *oci.Client satisfies this directly.
-type OCIClient interface {
+// InstanceRestarter is the subset of the OCI client the agent uses: a
+// stop/start cycle on a single instance. *oci.Client satisfies this directly.
+type InstanceRestarter interface {
 	RestartInstance(ctx context.Context, instanceID, compartmentID string) error
 }
 
@@ -63,9 +63,9 @@ func newConsulClient(address string) (ConsulClient, error) {
 	return &consulAdapter{client: client}, nil
 }
 
-// newOCIClient builds a real OCI client. It is the default OCIClient factory
-// wired into the agent in New().
-func newOCIClient(configPath, profile string) (OCIClient, error) {
+// newOCIClient builds a real OCI client. It is the default InstanceRestarter
+// factory wired into the agent in New().
+func newOCIClient(configPath, profile string) (InstanceRestarter, error) {
 	client, err := oci.NewClient(configPath, profile)
 	if err != nil {
 		return nil, err

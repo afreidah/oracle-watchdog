@@ -68,14 +68,14 @@ type Agent struct {
 
 	mu          sync.RWMutex
 	consul      ConsulClient
-	oci         OCIClient
+	oci         InstanceRestarter
 	consulState connectionState
 	ociState    connectionState
 
 	// Client factories, injectable for tests. Default to the real adapters
 	// (newConsulClient / newOCIClient) wired in New().
 	newConsul func(address string) (ConsulClient, error)
-	newOCI    func(configPath, profile string) (OCIClient, error)
+	newOCI    func(configPath, profile string) (InstanceRestarter, error)
 
 	// Tracks when each node was first seen as missing
 	missingSince map[string]time.Time

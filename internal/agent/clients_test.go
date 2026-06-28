@@ -4,7 +4,7 @@
 // Author: Alex Freidah
 //
 // Exercises the node-monitoring and connection logic through the ConsulClient
-// and OCIClient consumer interfaces, using in-memory fakes in place of the real
+// and InstanceRestarter consumer interfaces, using in-memory fakes in place of the real
 // Consul and OCI SDK clients.
 // -------------------------------------------------------------------------------
 
@@ -44,7 +44,7 @@ func (f *fakeConsul) GetKV(key string) (*consul.KVPair, error) {
 	return f.pairs[key], nil
 }
 
-// fakeOCI is an in-memory OCIClient recording the instances it was asked to
+// fakeOCI is an in-memory InstanceRestarter recording the instances it was asked to
 // restart.
 type fakeOCI struct {
 	mu    sync.Mutex
@@ -332,7 +332,7 @@ func TestTryConnectOCI_SuccessAndFailure(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		a := testAgent(node)
-		a.newOCI = func(string, string) (OCIClient, error) { return &fakeOCI{}, nil }
+		a.newOCI = func(string, string) (InstanceRestarter, error) { return &fakeOCI{}, nil }
 		a.tryConnectOCI()
 		if a.ociState != stateConnected {
 			t.Errorf("expected connected, got %v", a.ociState)
@@ -341,7 +341,7 @@ func TestTryConnectOCI_SuccessAndFailure(t *testing.T) {
 
 	t.Run("factory error", func(t *testing.T) {
 		a := testAgent(node)
-		a.newOCI = func(string, string) (OCIClient, error) { return nil, errors.New("boom") }
+		a.newOCI = func(string, string) (InstanceRestarter, error) { return nil, errors.New("boom") }
 		a.tryConnectOCI()
 		if a.ociState != stateDisconnected {
 			t.Errorf("expected disconnected on factory error, got %v", a.ociState)
