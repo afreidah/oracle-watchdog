@@ -260,7 +260,7 @@ func defaultWanDNS() WanDNSConfig {
 			"https://api.ipify.org",
 			// Cloudflare's anycast trace endpoint, addressed by IP on purpose: WAN-IP
 			// detection must not depend on DNS resolution working.
-			"https://1.1.1.1/cdn-cgi/trace", //NOSONAR
+			"https://1.1.1.1/cdn-cgi/trace", // NOSONAR
 		},
 		PollInterval: 5 * time.Minute,
 		Cooldown:     15 * time.Minute,
