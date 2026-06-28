@@ -83,13 +83,17 @@ func main() {
 // (a no-op when tracing is disabled or initialization failed).
 func startTracing(ctx context.Context, mode string, cfg config.TracingConfig, force bool) func() {
 	if !cfg.Enabled && !force {
-		return func() {}
+		return func() {
+			// no-op: tracing disabled, nothing to shut down.
+		}
 	}
 
 	shutdown, err := tracing.Init(ctx, mode, cfg.Endpoint)
 	if err != nil {
 		slog.Warn("failed to initialize tracing, continuing without", "error", err)
-		return func() {}
+		return func() {
+			// no-op: tracing failed to initialize, nothing to shut down.
+		}
 	}
 
 	return func() {

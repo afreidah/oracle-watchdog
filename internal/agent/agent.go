@@ -23,7 +23,6 @@ import (
 
 	"github.com/afreidah/oracle-watchdog/internal/config"
 	"github.com/afreidah/oracle-watchdog/internal/metrics"
-	"github.com/afreidah/oracle-watchdog/internal/oci"
 	"github.com/afreidah/oracle-watchdog/internal/tracing"
 	"github.com/afreidah/oracle-watchdog/internal/wandns"
 
@@ -68,10 +67,15 @@ type Agent struct {
 	cfg *config.Config
 
 	mu          sync.RWMutex
-	consul      *consul.Client
-	oci         *oci.Client
+	consul      ConsulClient
+	oci         OCIClient
 	consulState connectionState
 	ociState    connectionState
+
+	// Client factories, injectable for tests. Default to the real adapters
+	// (newConsulClient / newOCIClient) wired in New().
+	newConsul func(address string) (ConsulClient, error)
+	newOCI    func(configPath, profile string) (OCIClient, error)
 
 	// Tracks when each node was first seen as missing
 	missingSince map[string]time.Time
@@ -109,6 +113,8 @@ func New(cfg *config.Config) *Agent {
 		missingSince:    make(map[string]time.Time),
 		restarting:      make(map[string]bool),
 		restartAttempts: make(map[string]int),
+		newConsul:       newConsulClient,
+		newOCI:          newOCIClient,
 	}
 }
 
@@ -185,18 +191,14 @@ func (a *Agent) tick(ctx context.Context) {
 // -------------------------------------------------------------------------
 
 func (a *Agent) tryConnectConsul() {
-	cfg := consul.DefaultConfig()
-	cfg.Address = a.cfg.ConsulAddress
-
-	client, err := consul.NewClient(cfg)
+	client, err := a.newConsul(a.cfg.ConsulAddress)
 	if err != nil {
 		slog.Warn("failed to create consul client", "error", err)
 		return
 	}
 
 	// --- Verify connectivity ---
-	_, err = client.Status().Leader()
-	if err != nil {
+	if _, err := client.Leader(); err != nil {
 		slog.Warn("consul not reachable", "error", err, "address", a.cfg.ConsulAddress)
 		return
 	}
@@ -212,7 +214,7 @@ func (a *Agent) tryConnectConsul() {
 }
 
 func (a *Agent) tryConnectOCI() {
-	client, err := oci.NewClient(a.cfg.OCI.ConfigPath, a.cfg.OCI.Profile)
+	client, err := a.newOCI(a.cfg.OCI.ConfigPath, a.cfg.OCI.Profile)
 	if err != nil {
 		slog.Warn("failed to create oci client", "error", err)
 		return
@@ -265,31 +267,17 @@ func (a *Agent) checkNodes(ctx context.Context) {
 		return
 	}
 
-	kv := client.KV()
 	now := time.Now()
 	missingCount := 0
 	hadError := false
 
 	for _, node := range a.cfg.Nodes {
-		key := fmt.Sprintf("%s/%s", sessionKeyPath, node.Name)
-
-		_, kvSpan := tracing.StartClientSpan(ctx, "consul.kv.get",
-			tracing.PeerServiceAttr("consul"),
-			tracing.ServerAddressAttr(a.cfg.ConsulAddress),
-			tracing.NodeAttr(node.Name),
-		)
-
-		pair, _, err := kv.Get(key, nil)
+		pair, err := a.getNodeKV(ctx, client, node)
 		if err != nil {
-			kvSpan.RecordError(err)
-			kvSpan.SetStatus(codes.Error, err.Error())
-			kvSpan.End()
-			slog.Warn("failed to check node key", "node", node.Name, "error", err)
-			metrics.AgentConsulCheckFailures.Inc()
 			hadError = true
 			span.RecordError(err)
 
-			// --- Check for obvious connection errors ---
+			// --- Obvious connection errors abort the pass immediately ---
 			if isConnectionError(err) {
 				a.markConsulDisconnected()
 				span.SetStatus(codes.Error, "consul connection lost")
@@ -298,101 +286,145 @@ func (a *Agent) checkNodes(ctx context.Context) {
 			continue
 		}
 
-		kvSpan.SetStatus(codes.Ok, "key read")
-		kvSpan.End()
-
-		a.mu.Lock()
-
 		if pair == nil {
-			// --- Node key missing (session expired) ---
+			a.handleMissingNode(ctx, node, now)
 			missingCount++
-
-			if _, isRestarting := a.restarting[node.Name]; isRestarting {
-				// Already restarting, skip
-				a.mu.Unlock()
-				continue
-			}
-
-			// Check if max restart attempts exceeded
-			if a.cfg.MaxRestartAttempts > 0 && a.restartAttempts[node.Name] >= a.cfg.MaxRestartAttempts {
-				// Already at max attempts, don't restart again
-				a.mu.Unlock()
-				continue
-			}
-
-			if firstMissing, exists := a.missingSince[node.Name]; exists {
-				missingDuration := now.Sub(firstMissing)
-
-				if missingDuration >= a.cfg.Timeout {
-					slog.Warn("node exceeded timeout, triggering restart",
-						"node", node.Name,
-						"missing_for", missingDuration,
-						"timeout", a.cfg.Timeout,
-						"attempt", a.restartAttempts[node.Name]+1,
-					)
-
-					// Mark as restarting and clear tracking
-					a.restarting[node.Name] = true
-					delete(a.missingSince, node.Name)
-					a.mu.Unlock()
-
-					// Restart in goroutine to not block other node checks
-					a.restartWg.Add(1)
-					go a.restartNode(ctx, node)
-					continue
-				}
-
-				slog.Info("node missing",
-					"node", node.Name,
-					"missing_for", missingDuration,
-					"timeout_in", a.cfg.Timeout-missingDuration,
-				)
-			} else {
-				slog.Info("node went missing", "node", node.Name)
-				a.missingSince[node.Name] = now
-			}
 		} else {
-			// --- Node is alive ---
-			if _, wasMissing := a.missingSince[node.Name]; wasMissing {
-				slog.Info("node recovered", "node", node.Name)
-				delete(a.missingSince, node.Name)
-			}
-			// Reset restart attempts on recovery
-			if a.restartAttempts[node.Name] > 0 {
-				slog.Info("resetting restart attempts", "node", node.Name, "previous_attempts", a.restartAttempts[node.Name])
-				delete(a.restartAttempts, node.Name)
-			}
+			a.handleAliveNode(node)
 		}
-
-		a.mu.Unlock()
 	}
 
 	metrics.AgentNodesMissing.Set(float64(missingCount))
 
-	// --- Track consecutive failures for connection health ---
-	a.mu.Lock()
-	if hadError {
-		a.consulFailures++
-		if a.consulFailures >= maxConsecutiveFailures {
-			slog.Warn("consul consecutive failures exceeded threshold",
-				"failures", a.consulFailures,
-				"threshold", maxConsecutiveFailures,
-			)
-			a.mu.Unlock()
-			a.markConsulDisconnected()
-			span.SetStatus(codes.Error, "consecutive failures exceeded")
-			return
-		}
-	} else {
-		a.consulFailures = 0
+	if a.trackConsulFailures(hadError) {
+		span.SetStatus(codes.Error, "consecutive failures exceeded")
+		return
 	}
-	a.mu.Unlock()
 
 	span.SetAttributes(
 		tracing.DurationAttr("nodes_missing", float64(missingCount)),
 		tracing.DurationAttr("nodes_total", float64(len(a.cfg.Nodes))),
 	)
 	span.SetStatus(codes.Ok, "check complete")
+}
+
+// getNodeKV reads a single node's session key from Consul, wrapping the call in
+// a client span and incrementing the check-failure metric on error.
+func (a *Agent) getNodeKV(ctx context.Context, client ConsulClient, node config.NodeConfig) (*consul.KVPair, error) {
+	key := fmt.Sprintf("%s/%s", sessionKeyPath, node.Name)
+
+	_, kvSpan := tracing.StartClientSpan(ctx, "consul.kv.get",
+		tracing.PeerServiceAttr("consul"),
+		tracing.ServerAddressAttr(a.cfg.ConsulAddress),
+		tracing.NodeAttr(node.Name),
+	)
+	defer kvSpan.End()
+
+	pair, err := client.GetKV(key)
+	if err != nil {
+		kvSpan.RecordError(err)
+		kvSpan.SetStatus(codes.Error, err.Error())
+		slog.Warn("failed to check node key", "node", node.Name, "error", err)
+		metrics.AgentConsulCheckFailures.Inc()
+		return nil, err
+	}
+
+	kvSpan.SetStatus(codes.Ok, "key read")
+	return pair, nil
+}
+
+// handleMissingNode processes a node whose session key is absent. It records the
+// first-missing time, and once the configured timeout has elapsed (and restart
+// limits permit) launches an async restart. All state is mutated under the
+// agent mutex.
+func (a *Agent) handleMissingNode(ctx context.Context, node config.NodeConfig, now time.Time) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// Already restarting, or already at the max-attempts ceiling: nothing to do.
+	if _, isRestarting := a.restarting[node.Name]; isRestarting {
+		return
+	}
+	if a.cfg.MaxRestartAttempts > 0 && a.restartAttempts[node.Name] >= a.cfg.MaxRestartAttempts {
+		return
+	}
+
+	firstMissing, exists := a.missingSince[node.Name]
+	if !exists {
+		slog.Info("node went missing", "node", node.Name)
+		a.missingSince[node.Name] = now
+		return
+	}
+
+	missingDuration := now.Sub(firstMissing)
+	if missingDuration < a.cfg.Timeout {
+		slog.Info("node missing",
+			"node", node.Name,
+			"missing_for", missingDuration,
+			"timeout_in", a.cfg.Timeout-missingDuration,
+		)
+		return
+	}
+
+	slog.Warn("node exceeded timeout, triggering restart",
+		"node", node.Name,
+		"missing_for", missingDuration,
+		"timeout", a.cfg.Timeout,
+		"attempt", a.restartAttempts[node.Name]+1,
+	)
+
+	// Mark as restarting and clear tracking, then restart in a goroutine so the
+	// remaining node checks are not blocked.
+	a.restarting[node.Name] = true
+	delete(a.missingSince, node.Name)
+	a.restartWg.Add(1)
+	go a.restartNode(ctx, node)
+}
+
+// handleAliveNode processes a node whose session key is present, clearing any
+// missing/restart tracking so a recovered node starts from a clean slate.
+func (a *Agent) handleAliveNode(node config.NodeConfig) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if _, wasMissing := a.missingSince[node.Name]; wasMissing {
+		slog.Info("node recovered", "node", node.Name)
+		delete(a.missingSince, node.Name)
+	}
+	// Reset restart attempts on recovery.
+	if a.restartAttempts[node.Name] > 0 {
+		slog.Info("resetting restart attempts", "node", node.Name, "previous_attempts", a.restartAttempts[node.Name])
+		delete(a.restartAttempts, node.Name)
+	}
+}
+
+// trackConsulFailures updates the consecutive-failure counter after a check
+// pass. It returns true when the failure threshold has been crossed, in which
+// case Consul has been marked disconnected and the caller should stop.
+func (a *Agent) trackConsulFailures(hadError bool) bool {
+	a.mu.Lock()
+
+	if !hadError {
+		a.consulFailures = 0
+		a.mu.Unlock()
+		return false
+	}
+
+	a.consulFailures++
+	if a.consulFailures < maxConsecutiveFailures {
+		a.mu.Unlock()
+		return false
+	}
+
+	failures := a.consulFailures
+	a.mu.Unlock()
+
+	slog.Warn("consul consecutive failures exceeded threshold",
+		"failures", failures,
+		"threshold", maxConsecutiveFailures,
+	)
+	a.markConsulDisconnected()
+	return true
 }
 
 func (a *Agent) restartNode(ctx context.Context, node config.NodeConfig) {
