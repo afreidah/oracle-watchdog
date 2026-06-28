@@ -27,7 +27,7 @@ COPY cmd/ cmd/
 COPY internal/ internal/
 
 # --- Build binary (native cross-compilation, no QEMU needed) ---
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+RUN CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" go build \
     -ldflags="-s -w -X github.com/afreidah/oracle-watchdog/internal/tracing.Version=${VERSION}" \
     -o oracle-watchdog ./cmd/watchdog
 
