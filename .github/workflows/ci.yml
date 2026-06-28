@@ -28,6 +28,7 @@ jobs:
       contents: read
     outputs:
       go: ${{ steps.filter.outputs.go }}
+      sonar: ${{ steps.filter.outputs.sonar }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -44,6 +45,19 @@ jobs:
               - 'go.sum'
               - 'Makefile'
               - '.golangci.yml'
+            # SonarCloud analyses more than Go: workflows, Dockerfiles, the Hugo
+            # site, and the analysis config are all in scope, so the scan must
+            # run when any of these change, not just on Go changes.
+            sonar:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - '.golangci.yml'
+              - '.github/workflows/**'
+              - '**/Dockerfile'
+              - 'web/**'
+              - 'sonar-project.properties'
 
   # ---------------------------------------------------------------------------
   # GO CHECKS
@@ -138,7 +152,7 @@ jobs:
   # ---------------------------------------------------------------------------
   sonarqube:
     needs: [changes]
-    if: needs.changes.outputs.go == 'true'
+    if: needs.changes.outputs.sonar == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
