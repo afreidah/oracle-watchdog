@@ -1,10 +1,12 @@
 <p align="center">
-  <img src="web/static/images/logo.png" alt="oracle-watchdog" width="400">
+  <img src="web/static/images/logo.png" alt="oracle-watchdog" width="250">
 </p>
 
 # Oracle Watchdog
 
 [![CI](https://github.com/afreidah/oracle-watchdog/actions/workflows/ci.yml/badge.svg)](https://github.com/afreidah/oracle-watchdog/actions/workflows/ci.yml)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=afreidah_oracle-watchdog&metric=coverage)](https://sonarcloud.io/summary/new_code?id=afreidah_oracle-watchdog)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=afreidah_oracle-watchdog&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=afreidah_oracle-watchdog)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 <p align="center">
@@ -286,6 +288,16 @@ make web-push               # build and push multi-arch website image
 make clean                  # remove build artifacts
 ```
 
+On every push and pull request, CI runs lint, race-enabled tests, and
+`govulncheck`, then publishes coverage and the quality gate to
+[SonarCloud](https://sonarcloud.io/summary/new_code?id=afreidah_oracle-watchdog).
+Analysis scope and coverage exclusions are declared in `sonar-project.properties`.
+
+The agent drives Consul and OCI through the narrow `ConsulClient` and
+`OCIClient` consumer interfaces (`internal/agent/clients.go`), so the
+monitoring and restart logic is unit-tested against in-memory fakes rather than
+live infrastructure.
+
 ## Project Structure
 
 ```
@@ -296,13 +308,16 @@ make clean                  # remove build artifacts
 ├── Makefile                          # Build, test, package, push targets
 ├── nfpm.yaml                         # Debian package configuration (local builds)
 ├── config.example.yaml               # Example agent configuration
+├── sonar-project.properties          # SonarCloud analysis config (coverage, exclusions)
 ├── cmd/
 │   └── watchdog/
 │       └── main.go                   # Entry point, mode routing, signal handling
 ├── internal/
 │   ├── agent/
 │   │   ├── agent.go                  # Agent mode: node monitoring, restart orchestration
-│   │   └── agent_test.go
+│   │   ├── clients.go                # ConsulClient/OCIClient interfaces + real adapters
+│   │   ├── agent_test.go
+│   │   └── clients_test.go
 │   ├── config/
 │   │   ├── config.go                 # YAML config loading and validation
 │   │   └── config_test.go

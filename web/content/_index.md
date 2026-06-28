@@ -5,7 +5,7 @@ description: "Distributed monitoring and recovery system for Oracle Cloud free-t
 ---
 
 <div style="text-align: center; margin-top: -2rem; margin-bottom: -2rem;">
-  <img src="/images/logo.png" alt="oracle-watchdog" style="max-width: 750px; height: auto;">
+  <img src="/images/logo.png" alt="oracle-watchdog" style="max-width: 400px; height: auto;">
 </div>
 
 <div class="badge-grid">
@@ -72,9 +72,9 @@ Oracle periodically reclaims free-tier instances, leaving them in a stuck state 
   <div class="feature-item">
     <div>
       <strong>Prometheus Metrics</strong>
-      <p>13 metrics covering connection health, session status, and restart activity per node.</p>
+      <p>24 metrics covering connection health, session status, and restart activity per node.</p>
     </div>
-    <div class="feature-detail">Monitor exposes connection and session gauges, renewal/failure counters, and reconnect attempts on port 9104. Agent exposes connection status, node counts, per-node restart counters, and check failures on port 9105.</div>
+    <div class="feature-detail">Monitor exposes connection and session gauges, renewal/failure counters, and reconnect attempts on port 9104. Agent exposes connection status, node counts, per-node restart counters, and check failures on port 9105. The optional WireGuard endpoint resolver and Cloudflare WAN-IP DDNS subsystems add their own gauges and counters.</div>
   </div>
   <div class="feature-item">
     <div>
