@@ -126,7 +126,43 @@ jobs:
           check-latest: true
 
       - name: Unit tests
-        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+        run: go test -race -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...
+
+      - name: Upload unit coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unit-coverage
+          path: coverage.out
+
+  # ---------------------------------------------------------------------------
+  # INTEGRATION TESTS (real Consul via testcontainers; OCI is faked)
+  # ---------------------------------------------------------------------------
+  integration:
+    needs: [changes]
+    # Also run on every push to main so the SonarQube scan always has merged
+    # unit+integration coverage for main. No secrets needed (only Docker), so
+    # this is safe to run for Dependabot too.
+    if: needs.changes.outputs.go == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          check-latest: true
+
+      - name: Integration tests
+        run: go test -race -v -tags integration -count=1 -timeout=600s -coverprofile=integration-coverage.out -covermode=atomic -coverpkg=./... ./internal/integration/
+
+      - name: Upload integration coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: integration-coverage
+          path: integration-coverage.out
 
   govulncheck:
     needs: [changes]
@@ -151,11 +187,15 @@ jobs:
   # SONARQUBE ANALYSIS (coverage + quality gate -> SonarCloud)
   # ---------------------------------------------------------------------------
   sonarqube:
-    needs: [changes]
-    # Skip for Dependabot: its PRs run without repository secrets, so SONAR_TOKEN
-    # is unavailable and the scan can't authenticate. Dependency bumps add no
-    # analysable code; the next push to main re-scans.
-    if: needs.changes.outputs.sonar == 'true' && github.actor != 'dependabot[bot]'
+    needs: [changes, test, integration]
+    # always() so the scan still runs when test/integration are skipped (e.g. a
+    # web/workflow-only change with no Go); the coverage downloads tolerate the
+    # missing artifacts in that case. Skip for Dependabot (no SONAR_TOKEN) and
+    # when the unit tests failed (nothing trustworthy to report).
+    if: >-
+      always() && github.actor != 'dependabot[bot]'
+      && needs.changes.outputs.sonar == 'true'
+      && needs.test.result != 'failure' && needs.test.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -164,13 +204,17 @@ jobs:
         with:
           fetch-depth: 0 # full history so SonarCloud can attribute new code
 
-      - uses: actions/setup-go@v6
+      - name: Download unit coverage
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          go-version: '1.26'
-          check-latest: true
+          name: unit-coverage
+        continue-on-error: true # absent on non-Go changes
 
-      - name: Generate coverage
-        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Download integration coverage
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: integration-coverage
+        continue-on-error: true # absent on non-Go changes
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0

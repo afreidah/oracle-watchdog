@@ -94,9 +94,26 @@ type Agent struct {
 	ociFailures    int
 }
 
+// Option configures the Agent. Used to inject dependencies (chiefly the Consul
+// and OCI client factories) without changing New's signature for existing
+// callers - primarily for integration tests that pair a real Consul with a
+// substituted OCI client.
+type Option func(*Agent)
+
+// WithConsulClientFactory overrides the Consul client factory.
+func WithConsulClientFactory(f func(address string) (ConsulClient, error)) Option {
+	return func(a *Agent) { a.newConsul = f }
+}
+
+// WithOCIClientFactory overrides the OCI client factory, letting tests inject a
+// fake InstanceRestarter in place of the real OCI SDK client.
+func WithOCIClientFactory(f func(configPath, profile string) (InstanceRestarter, error)) Option {
+	return func(a *Agent) { a.newOCI = f }
+}
+
 // New creates an Agent with the given configuration. Connections to Consul
 // and OCI happen asynchronously in Run().
-func New(cfg *config.Config) *Agent {
+func New(cfg *config.Config, opts ...Option) *Agent {
 	metrics.AgentNodesMonitored.Set(float64(len(cfg.Nodes)))
 
 	// Initialize restart counters so metrics exist in Prometheus even with zero restarts.
@@ -106,7 +123,7 @@ func New(cfg *config.Config) *Agent {
 		metrics.AgentRestartFailures.WithLabelValues(node.Name)
 	}
 
-	return &Agent{
+	a := &Agent{
 		cfg:             cfg,
 		consulState:     stateDisconnected,
 		ociState:        stateDisconnected,
@@ -116,6 +133,10 @@ func New(cfg *config.Config) *Agent {
 		newConsul:       newConsulClient,
 		newOCI:          newOCIClient,
 	}
+	for _, opt := range opts {
+		opt(a)
+	}
+	return a
 }
 
 // Run starts the monitoring loop. Never returns an error due to connection

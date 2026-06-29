@@ -3,6 +3,8 @@
 /dist/
 *.test
 *.deb
+coverage.out
+integration-coverage.out
 packaging/changelog.gz
 web/public/
 web/resources/

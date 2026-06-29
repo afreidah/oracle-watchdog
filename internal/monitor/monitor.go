@@ -88,7 +88,7 @@ type Monitor struct {
 
 	// client is the active Consul client when state is connecting or active,
 	// nil otherwise.
-	client *consul.Client
+	client ConsulSession
 
 	// sessionID is the active Consul session UUID, empty when disconnected.
 	sessionID string
@@ -99,6 +99,10 @@ type Monitor struct {
 	// renewCount counts successful session renewals since the last
 	// transition to active.
 	renewCount int
+
+	// newConsul builds a Consul client, injectable for tests. Defaults to the
+	// real adapter (newConsulClient) wired in New().
+	newConsul func(address string) (ConsulSession, error)
 }
 
 // Option configures the Monitor. Used to enable optional features without
@@ -123,6 +127,7 @@ func New(nodeName string, opts ...Option) *Monitor {
 		nodeName:      nodeName,
 		consulAddress: consulAddr,
 		state:         stateDisconnected,
+		newConsul:     newConsulClient,
 	}
 	for _, opt := range opts {
 		opt(m)
@@ -195,10 +200,7 @@ func (m *Monitor) tick(ctx context.Context) {
 func (m *Monitor) tryConnect(ctx context.Context) {
 	metrics.MonitorReconnectAttempts.Inc()
 
-	cfg := consul.DefaultConfig()
-	cfg.Address = m.consulAddress
-
-	client, err := consul.NewClient(cfg)
+	client, err := m.newConsul(m.consulAddress)
 	if err != nil {
 		slog.Warn("failed to create consul client", "error", err, "address", m.consulAddress)
 		metrics.MonitorSessionFailures.Inc()
@@ -211,8 +213,7 @@ func (m *Monitor) tryConnect(ctx context.Context) {
 		tracing.ServerAddressAttr(m.consulAddress),
 	)
 
-	_, err = client.Status().Leader()
-	if err != nil {
+	if _, err := client.Leader(); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		span.End()
@@ -259,7 +260,7 @@ func (m *Monitor) tryCreateSession(ctx context.Context) {
 		tracing.NodeAttr(m.nodeName),
 	)
 
-	sessionID, _, err := client.Session().Create(entry, nil)
+	sessionID, err := client.CreateSession(entry)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -278,7 +279,7 @@ func (m *Monitor) tryCreateSession(ctx context.Context) {
 	if err := m.writeKey(ctx, client, sessionID); err != nil {
 		slog.Warn("failed to write key", "error", err)
 		metrics.MonitorSessionFailures.Inc()
-		_, _ = client.Session().Destroy(sessionID, nil)
+		_ = client.DestroySession(sessionID)
 		m.transitionTo(stateDisconnected)
 		metrics.MonitorConsulConnected.Set(0)
 		return
@@ -310,7 +311,7 @@ func (m *Monitor) tryRenew(ctx context.Context) {
 		tracing.ServerAddressAttr(m.consulAddress),
 	)
 
-	entry, _, err := client.Session().Renew(sessionID, nil)
+	entry, err := client.RenewSession(sessionID)
 	if err != nil || entry == nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "renewal failed")
@@ -354,7 +355,7 @@ func (m *Monitor) transitionTo(newState state) {
 	}
 }
 
-func (m *Monitor) writeKey(ctx context.Context, client *consul.Client, sessionID string) error {
+func (m *Monitor) writeKey(ctx context.Context, client ConsulSession, sessionID string) error {
 	_, span := tracing.StartClientSpan(ctx, "consul.kv.acquire",
 		tracing.PeerServiceAttr("consul"),
 		tracing.ServerAddressAttr(m.consulAddress),
@@ -362,7 +363,6 @@ func (m *Monitor) writeKey(ctx context.Context, client *consul.Client, sessionID
 	)
 	defer span.End()
 
-	kv := client.KV()
 	key := fmt.Sprintf("%s/%s", sessionKeyPath, m.nodeName)
 
 	pair := &consul.KVPair{
@@ -371,7 +371,7 @@ func (m *Monitor) writeKey(ctx context.Context, client *consul.Client, sessionID
 		Session: sessionID,
 	}
 
-	acquired, _, err := kv.Acquire(pair, nil)
+	acquired, err := client.AcquireKey(pair)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -402,7 +402,7 @@ func (m *Monitor) cleanup(ctx context.Context) {
 		)
 
 		slog.Info("destroying session", "session_id", sessionID)
-		_, _ = client.Session().Destroy(sessionID, nil)
+		_ = client.DestroySession(sessionID)
 
 		span.SetStatus(codes.Ok, "session destroyed")
 		span.End()
