@@ -152,7 +152,10 @@ jobs:
   # ---------------------------------------------------------------------------
   sonarqube:
     needs: [changes]
-    if: needs.changes.outputs.sonar == 'true'
+    # Skip for Dependabot: its PRs run without repository secrets, so SONAR_TOKEN
+    # is unavailable and the scan can't authenticate. Dependency bumps add no
+    # analysable code; the next push to main re-scans.
+    if: needs.changes.outputs.sonar == 'true' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
