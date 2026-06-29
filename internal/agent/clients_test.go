@@ -292,6 +292,55 @@ func TestRestartNode_DisconnectedOCISkips(t *testing.T) {
 	}
 }
 
+// --- tick / wan-dns -------------------------------------------------------
+
+func TestTick_ConnectedChecksNodes(t *testing.T) {
+	node := config.NodeConfig{Name: "n1", InstanceID: "i-1", CompartmentID: "c-1"}
+	a := testAgent(node)
+	// Already connected: tick should skip reconnect and run a node check.
+	a.consul = &fakeConsul{} // missing pair
+	a.consulState = stateConnected
+	a.ociState = stateConnected
+	a.oci = &fakeOCI{}
+
+	a.tick(context.Background())
+	a.restartWg.Wait()
+
+	// A missing node on first sighting is recorded by checkNodes.
+	if _, ok := a.missingSince["n1"]; !ok {
+		t.Error("expected tick to run checkNodes and record the missing node")
+	}
+}
+
+func TestTick_DisconnectedReconnects(t *testing.T) {
+	node := config.NodeConfig{Name: "n1", InstanceID: "i-1", CompartmentID: "c-1"}
+	a := testAgent(node)
+	a.consulState = stateDisconnected
+	a.ociState = stateDisconnected
+	a.newConsul = func(string) (ConsulClient, error) {
+		return &fakeConsul{pairs: map[string]*consul.KVPair{nodeKey("n1"): {Key: nodeKey("n1")}}}, nil
+	}
+	a.newOCI = func(string, string) (InstanceRestarter, error) { return &fakeOCI{}, nil }
+
+	a.tick(context.Background())
+
+	if a.consulState != stateConnected {
+		t.Errorf("expected tick to reconnect consul, got %v", a.consulState)
+	}
+	if a.ociState != stateConnected {
+		t.Errorf("expected tick to reconnect oci, got %v", a.ociState)
+	}
+}
+
+func TestStartWanDNSUpdater_DisabledIsNoop(t *testing.T) {
+	node := config.NodeConfig{Name: "n1", InstanceID: "i-1", CompartmentID: "c-1"}
+	a := testAgent(node)
+	a.cfg.WanDNS.Enabled = false
+
+	// Disabled: must return immediately without starting a goroutine or panicking.
+	a.startWanDNSUpdater(context.Background())
+}
+
 // --- connection management ------------------------------------------------
 
 func TestTryConnectConsul_SuccessAndFailure(t *testing.T) {
