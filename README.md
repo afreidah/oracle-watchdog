@@ -268,6 +268,7 @@ make push                   # build and push multi-arch images to registry
 
 # --- Test & Lint ---
 make test                   # unit tests with race detector and coverage
+make integration-test       # integration tests vs real Consul (needs Docker)
 make vet                    # Go vet static analysis
 make lint                   # golangci-lint
 make govulncheck            # Go vulnerability scanner
@@ -288,15 +289,19 @@ make web-push               # build and push multi-arch website image
 make clean                  # remove build artifacts
 ```
 
-On every push and pull request, CI runs lint, race-enabled tests, and
-`govulncheck`, then publishes coverage and the quality gate to
+On every push and pull request, CI runs lint, race-enabled unit and integration
+tests, and `govulncheck`, then publishes the merged coverage and quality gate to
 [SonarCloud](https://sonarcloud.io/summary/new_code?id=afreidah_oracle-watchdog).
 Analysis scope and coverage exclusions are declared in `sonar-project.properties`.
 
-The agent drives Consul and OCI through the narrow `ConsulClient` and
-`OCIClient` consumer interfaces (`internal/agent/clients.go`), so the
-monitoring and restart logic is unit-tested against in-memory fakes rather than
-live infrastructure.
+Both the agent and the monitor drive Consul (and the agent, OCI) through narrow
+consumer interfaces (`internal/*/clients.go`), so the monitoring, session, and
+restart logic is unit-tested against in-memory fakes rather than live
+infrastructure. The `internal/integration` suite (build tag `integration`)
+complements those fakes by exercising the real SDK code paths and `Run` loops
+against a throwaway Consul container spun up via testcontainers — `make
+integration-test` (Docker required). OCI is faked there too, so no Oracle Cloud
+access is needed; the agent's restart decision is asserted in dry-run mode.
 
 ## Project Structure
 
@@ -315,17 +320,23 @@ live infrastructure.
 ├── internal/
 │   ├── agent/
 │   │   ├── agent.go                  # Agent mode: node monitoring, restart orchestration
-│   │   ├── clients.go                # ConsulClient/OCIClient interfaces + real adapters
+│   │   ├── clients.go                # ConsulClient/InstanceRestarter interfaces + real adapters
 │   │   ├── agent_test.go
 │   │   └── clients_test.go
 │   ├── config/
 │   │   ├── config.go                 # YAML config loading and validation
 │   │   └── config_test.go
+│   ├── integration/                  # Integration tests (build tag: integration)
+│   │   ├── helpers_test.go           # testcontainers Consul setup
+│   │   ├── monitor_integration_test.go
+│   │   └── agent_integration_test.go
 │   ├── metrics/
 │   │   └── metrics.go                # Prometheus metric definitions and HTTP server
 │   ├── monitor/
 │   │   ├── monitor.go                # Monitor mode: Consul session lifecycle
-│   │   └── monitor_test.go
+│   │   ├── clients.go                # ConsulSession interface + real adapter
+│   │   ├── monitor_test.go
+│   │   └── clients_test.go
 │   ├── oci/
 │   │   └── client.go                 # OCI SDK wrapper for instance lifecycle
 │   └── tracing/
