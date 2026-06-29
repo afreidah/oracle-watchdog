@@ -3,6 +3,35 @@
 All notable changes to this project are documented in this file.
 
 
+## [1.4.7] - 2026-06-29
+
+### Fixed
+- fix(security): refresh base images + toolchain, clear Trivy image CVEs
+- fix(ci): declare job-level permissions instead of workflow-level (S8264)
+- fix(ci): clear SonarCloud quality gate (security rating + new-code coverage)
+- fix(lint): space after // in NOSONAR comment (gocritic commentFormatting)
+
+### Refactored
+- refactor(agent): rename OCIClient to InstanceRestarter (go:S8196)
+
+### Improved
+- update CHANGELOG.md for v1.4.5 (#60)
+
+### Documentation
+- document integration tests; bump version to v1.4.7
+
+### Other
+- test(integration): add testcontainers Consul integration suite + merged coverage
+- test(monitor,agent): refactor monitor to consumer interface, raise coverage
+- build(deps): bump github.com/hashicorp/consul/api from 1.33.7 to 1.34.3
+- skip sonarqube job for Dependabot PRs
+- build(deps): bump github.com/oracle/oci-go-sdk/v65
+- run SonarCloud scan on workflow/Dockerfile/web changes too
+- pin third-party actions to SHA and quote Dockerfile build vars
+- resolve SonarCloud findings, add Sonar CI, refactor agent for testability
+- build(deps): bump actions/checkout from 6 to 7
+- build(deps): bump github.com/oracle/oci-go-sdk/v65
+
 ## [1.4.5] - 2026-06-03
 
 ### Improved
