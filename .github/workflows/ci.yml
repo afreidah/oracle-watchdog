@@ -173,15 +173,11 @@ jobs:
     steps:
       # Official action does checkout + setup-go + install + run, so the workflow
       # carries no `go install ...@version` of its own (not lock-file
-      # deterministic, githubactions:S8545).
-      # TEMP: force the 1.26.4 toolchain (stdlib CVE fix) via GOTOOLCHAIN until
-      # go.mod's go directive moves past it. The action's go commands inherit it.
+      # deterministic, githubactions:S8545). The toolchain is pinned via go.mod.
       - name: Run govulncheck
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:
           go-version-file: go.mod
-        env:
-          GOTOOLCHAIN: go1.26.4
 
   # ---------------------------------------------------------------------------
   # SONARQUBE ANALYSIS (coverage + quality gate -> SonarCloud)

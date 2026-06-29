@@ -35,7 +35,7 @@ RUN CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" go build \
 # Runtime Image
 # -------------------------------------------------------------------------
 
-FROM alpine:3.21
+FROM alpine:3.24
 
 ARG VERSION=dev
 
@@ -44,7 +44,8 @@ LABEL org.opencontainers.image.title="oracle-watchdog" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.source="https://github.com/afreidah/oracle-watchdog"
 
-RUN apk add --no-cache ca-certificates && \
+RUN apk upgrade --no-cache && \
+    apk add --no-cache ca-certificates && \
     adduser -D -u 10001 appuser
 
 COPY --from=builder /build/oracle-watchdog /usr/local/bin/
