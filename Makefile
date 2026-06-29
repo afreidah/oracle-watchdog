@@ -82,6 +82,9 @@ push: builder ## Build and push multi-arch images to registry
 test: ## Run Go tests with coverage
 	go test -race -cover ./...
 
+integration-test: ## Run integration tests (real Consul via testcontainers — needs Docker)
+	go test -race -v -tags integration -count=1 -timeout=600s ./internal/integration/
+
 vet: ## Run Go vet static analysis
 	go vet ./...
 
@@ -220,5 +223,5 @@ clean: ## Remove build artifacts
 	rm -f packaging/changelog.gz
 	docker rmi $(FULL_TAG) 2>/dev/null || true
 
-.PHONY: help builder build docker push test vet lint govulncheck changelog release release-local prep-changelog deb publish-deb web-godoc web-serve web-build web-docker web-push clean
+.PHONY: help builder build docker push test integration-test vet lint govulncheck changelog release release-local prep-changelog deb publish-deb web-godoc web-serve web-build web-docker web-push clean
 .DEFAULT_GOAL := help
