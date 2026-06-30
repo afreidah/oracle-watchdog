@@ -3,6 +3,17 @@
 All notable changes to this project are documented in this file.
 
 
+## [1.4.8] - 2026-06-30
+
+### Fixed
+- fix(web): restore architecture page hover tooltips for Mermaid 11
+
+### Improved
+- update CHANGELOG.md for v1.4.7 (#72)
+
+### Other
+- test(agent,monitor): cover option injection and optional-subsystem startup
+
 ## [1.4.7] - 2026-06-29
 
 ### Fixed
