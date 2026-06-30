@@ -108,7 +108,11 @@ weight: 5
     var tooltip = document.getElementById('arch-tooltip');
     document.querySelectorAll('#arch-diagram .node').forEach(function(node) {
       var id = node.id || '';
-      var key = id.replace(/^flowchart-/, '').replace(/-\d+$/, '');
+      // Mermaid 11 prefixes node ids with the render id, e.g.
+      // "arch-mermaid-svg-flowchart-ON1-0"; older versions emitted a bare
+      // "flowchart-ON1-0". Pull the node key out of either form.
+      var match = id.match(/flowchart-(.+?)-\d+$/);
+      var key = match ? match[1] : '';
       if (!nodeInfo[key]) return;
 
       node.addEventListener('mouseenter', function(e) {
