@@ -341,6 +341,46 @@ func TestStartWanDNSUpdater_DisabledIsNoop(t *testing.T) {
 	a.startWanDNSUpdater(context.Background())
 }
 
+func TestStartWanDNSUpdater_ConstructionErrorIsLoggedNotFatal(t *testing.T) {
+	node := config.NodeConfig{Name: "n1", InstanceID: "i-1", CompartmentID: "c-1"}
+	a := testAgent(node)
+
+	// Enabled, but the token env var is unset so wandns.New fails with
+	// ErrTokenMissing. The agent must swallow the error and continue - DDNS is
+	// optional and must not start a goroutine or block the monitor loop.
+	a.cfg.WanDNS.Enabled = true
+	a.cfg.WanDNS.Cloudflare.APITokenEnv = "ORACLE_WATCHDOG_TEST_UNSET_TOKEN"
+	t.Setenv("ORACLE_WATCHDOG_TEST_UNSET_TOKEN", "")
+
+	// Must not panic and must return without launching the updater.
+	a.startWanDNSUpdater(context.Background())
+}
+
+// --- handleMissingNode ----------------------------------------------------
+
+func TestHandleMissingNode_WithinTimeoutDoesNotRestart(t *testing.T) {
+	node := config.NodeConfig{Name: "n1", InstanceID: "i-1", CompartmentID: "c-1"}
+	a := testAgent(node)
+	a.cfg.Timeout = time.Hour
+	oci := &fakeOCI{}
+	a.oci = oci
+	a.ociState = stateConnected
+
+	now := time.Now()
+	// Already seen missing, but only briefly - well within the timeout.
+	a.missingSince["n1"] = now.Add(-time.Minute)
+
+	a.handleMissingNode(context.Background(), node, now)
+	a.restartWg.Wait()
+
+	if oci.restartCount() != 0 {
+		t.Errorf("expected no restart within timeout, got %d", oci.restartCount())
+	}
+	if _, ok := a.missingSince["n1"]; !ok {
+		t.Error("expected missingSince retained while waiting out the timeout")
+	}
+}
+
 // --- connection management ------------------------------------------------
 
 func TestTryConnectConsul_SuccessAndFailure(t *testing.T) {
@@ -374,6 +414,44 @@ func TestTryConnectConsul_SuccessAndFailure(t *testing.T) {
 			t.Errorf("expected disconnected when leader unreachable, got %v", a.consulState)
 		}
 	})
+}
+
+// --- option injection -----------------------------------------------------
+
+func TestWithClientFactories_OverrideDefaults(t *testing.T) {
+	cfg := &config.Config{
+		Timeout:       5 * time.Minute,
+		CheckInterval: 30 * time.Second,
+		ConsulAddress: "localhost:8500",
+		Nodes:         []config.NodeConfig{{Name: "n1", InstanceID: "i-1", CompartmentID: "c-1"}},
+	}
+
+	var consulCalled, ociCalled bool
+	a := New(cfg,
+		WithConsulClientFactory(func(string) (ConsulClient, error) {
+			consulCalled = true
+			return &fakeConsul{}, nil
+		}),
+		WithOCIClientFactory(func(string, string) (InstanceRestarter, error) {
+			ociCalled = true
+			return &fakeOCI{}, nil
+		}),
+	)
+
+	// The injected factories must replace the production ones and be invoked
+	// when the agent establishes its connections.
+	a.tryConnectConsul()
+	a.tryConnectOCI()
+
+	if !consulCalled {
+		t.Error("expected injected consul factory to be used")
+	}
+	if !ociCalled {
+		t.Error("expected injected oci factory to be used")
+	}
+	if a.consulState != stateConnected || a.ociState != stateConnected {
+		t.Errorf("expected both connected, got consul=%v oci=%v", a.consulState, a.ociState)
+	}
 }
 
 func TestTryConnectOCI_SuccessAndFailure(t *testing.T) {
