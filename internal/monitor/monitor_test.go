@@ -7,7 +7,10 @@
 package monitor
 
 import (
+	"context"
 	"testing"
+
+	"github.com/afreidah/oracle-watchdog/internal/config"
 )
 
 func TestState_String(t *testing.T) {
@@ -60,6 +63,23 @@ func TestNew_DefaultConsulAddress(t *testing.T) {
 	if monitor.consulAddress != "localhost:8500" {
 		t.Errorf("expected default consulAddress, got %s", monitor.consulAddress)
 	}
+}
+
+// -------------------------------------------------------------------------
+// WIREGUARD RESOLVER STARTUP
+// -------------------------------------------------------------------------
+
+func TestStartWireguardResolver_ConstructionErrorIsLoggedNotFatal(t *testing.T) {
+	// Enabled, but an invalid peer public key makes wgresolver.New fail. The
+	// monitor must swallow the error and continue - the resolver is optional and
+	// must not start a goroutine or block the heartbeat loop.
+	m := New("test-node", WithWireguard(config.WireguardConfig{
+		Enabled:    true,
+		PeerPubkey: "not-a-valid-base64-wireguard-key",
+	}))
+
+	// Must not panic and must return without launching the resolver.
+	m.startWireguardResolver(context.Background())
 }
 
 // -------------------------------------------------------------------------
