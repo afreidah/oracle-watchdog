@@ -9,6 +9,18 @@
 
 version: 2
 
+# --- Snapshot builds (`goreleaser --snapshot`, i.e. `make deb`) get published to
+#     the aptly repo, so their versions MUST increase monotonically or apt won't
+#     upgrade nodes. The default snapshot version ends in the git short-commit,
+#     which dpkg compares LEXICALLY (not by build time) -- so rebuilds of the same
+#     base version look "older" at random and `apt-get upgrade` skips them.
+#     Fix: `incpatch` bumps to the next patch (sorts above the last release), the
+#     `~snapshot` keeps it a pre-release of that patch, and the Unix build
+#     `.Timestamp` strictly increases on every build -> reliable, ordered upgrades.
+#     e.g. base 1.4.8 -> 1.4.9~snapshot.1751520000
+snapshot:
+  version_template: '{{ incpatch .Version }}~snapshot.{{ .Timestamp }}'
+
 builds:
   - main: ./cmd/watchdog
     binary: oracle-watchdog
