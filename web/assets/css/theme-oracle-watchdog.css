@@ -212,9 +212,13 @@ pre.mermaid {
 }
 
 
-/* Hide the top bar and search */
-#R-topbar {
-  display: none;
+/* Hide the top bar on wide screens where the sidebar is permanently visible.
+   Below 48rem the sidebar collapses off-canvas and the topbar's hamburger
+   (toggleNav) is the only way to open the nav, so it must stay visible there. */
+@media screen and (min-width: 48rem) {
+  #R-topbar {
+    display: none;
+  }
 }
 
 #R-searchresults,
@@ -407,4 +411,67 @@ a.landing-card:hover p {
 .btn.cstyle.button.primary a:hover {
   background-color: #3d2a0e !important;
   color: #fbbf24 !important;
+}
+
+/* ==========================================================================
+   Mobile / responsive
+   The relearn theme is responsive out of the box; these rules adapt the
+   custom landing-page components and content above to narrow screens.
+   Breakpoint 47.999rem (768px) matches the theme's own mobile breakpoint,
+   below which the sidebar collapses off-canvas.
+   ========================================================================== */
+
+@media screen and (max-width: 47.999rem) {
+  /* Collapse the two-column card grids to a single column on phones */
+  .feature-grid,
+  .landing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Touch screens have no hover, so the pop-up feature detail can never be
+     revealed. Render it inline and always visible instead. */
+  .feature-item {
+    flex-direction: column;
+  }
+
+  .feature-detail {
+    display: block;
+    position: static;
+    left: auto;
+    right: auto;
+    margin-top: 0.75rem;
+    padding: 0.75rem 0 0 0;
+    border: none;
+    border-top: 1px solid #334155;
+    border-radius: 0;
+    box-shadow: none;
+    font-size: 0.95rem;
+    pointer-events: auto;
+  }
+
+  /* The inline detail sits inside the card, so keep all corners rounded even
+     on hover (the theme's hover rule flattens the bottom corners). */
+  .feature-item:hover {
+    border-radius: 8px;
+    box-shadow: none;
+    z-index: auto;
+  }
+
+  .feature-item:hover .feature-detail {
+    box-shadow: none;
+  }
+
+  /* Let wide tables scroll horizontally instead of blowing out the viewport.
+     (Code blocks already wrap via the theme's white-space: pre-wrap.) */
+  #R-body-inner table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ease the oversized centered page title on small screens */
+  #R-body h1 {
+    font-size: 2rem !important;
+  }
 }
