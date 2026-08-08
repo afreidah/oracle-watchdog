@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/hashicorp/consul/api v1.34.4
-	github.com/oracle/oci-go-sdk/v65 v65.122.0
+	github.com/oracle/oci-go-sdk/v65 v65.123.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/testcontainers/testcontainers-go/modules/consul v0.43.0
 	go.opentelemetry.io/otel v1.44.0
