@@ -1,6 +1,6 @@
 module github.com/afreidah/oracle-watchdog
 
-go 1.26.7
+go 1.27.2
 
 require (
 	github.com/hashicorp/consul/api v1.34.5
