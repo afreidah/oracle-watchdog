@@ -3,7 +3,7 @@ module github.com/afreidah/oracle-watchdog
 go 1.27.2
 
 require (
-	github.com/hashicorp/consul/api v1.34.5
+	github.com/hashicorp/consul/api v1.35.0
 	github.com/oracle/oci-go-sdk/v65 v65.126.2
 	github.com/prometheus/client_golang v1.24.1
 	github.com/testcontainers/testcontainers-go/modules/consul v0.44.0
